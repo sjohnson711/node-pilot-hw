@@ -6,10 +6,12 @@ const fs = require("fs");
 const csv = require("csv-parser");
 let stmt;
 
+
+
 async function doTables() {
   try {
     await client.connect();
-
+    
     stmt = `DROP TABLE IF EXISTS line_items;`;
     await client.query(stmt);
     stmt = `DROP TABLE IF EXISTS orders;`;
