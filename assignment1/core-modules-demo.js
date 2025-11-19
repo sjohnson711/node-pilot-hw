@@ -32,3 +32,55 @@ async function fsPromises() {
 fsPromises();
 
 // Streams for large files- log first 40 chars of each chunk
+fs.writeFile(
+  path.join(__dirname, "/sample-files", "largefile.txt"),
+  "",
+  (err) => {
+    if (err) throw err;
+    console.log(`File Created...`);
+    fs.appendFile(
+      path.join(__dirname, "/sample-files", "largefile.txt"),
+      " Seth is real",
+      (err) => {
+        if (err) {
+          console.log(`File Created...`);
+        }
+      }
+    );
+  }
+);
+
+let content = "";
+for (let i = 0; i < 100; i++) {
+  content += `Read chunk: I created random lines of code ${i}\n`;
+}
+
+let largetext = path.join(__dirname, "largefile.txt");
+
+async function writeToFile() {
+  try {
+    await fs.promises.writeFile(largetext, content, "utf8");
+    console.log("wrote to file");
+  } catch (err) {
+    console.error(`there is an error in your code`, err);
+  }
+}
+writeToFile();
+
+const readFile = fs.createReadStream(largetext, { highWaterMark: 1024 });
+
+readFile.on("data", (chunk) => {
+  console.log(`Read chunk:${chunk}`);
+});
+
+readFile.on("end", () =>
+  console.log("Finished reading large file with streams")
+);
+
+
+
+
+const fs = require('fs')
+
+
+
