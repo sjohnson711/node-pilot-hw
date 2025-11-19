@@ -41,10 +41,12 @@ describe('Week 1 Assignment Solution Tests', () => {
   test('core-modules-demo.js uses os, path, fs.promises, and streams', () => {
     const demoTxt = path.join(sampleFilesDir, 'demo.txt');
     const largeFile = path.join(sampleFilesDir, 'largefile.txt');
+
     // Remove files if they exist
     if (fs.existsSync(demoTxt)) fs.unlinkSync(demoTxt);
     if (fs.existsSync(largeFile)) fs.unlinkSync(largeFile);
     const output = execSync(`node ${path.join(assignmentDir, 'core-modules-demo.js')}`).toString();
+    
     // OS module output
     expect(output).toMatch(/Platform:/);
     expect(output).toMatch(/CPU:/);
