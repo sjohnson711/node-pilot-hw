@@ -81,6 +81,8 @@ readFile.on("end", () =>
 
 
 
+//example for video
+// const fs = require('fs')
 
 
-
+// modules.export = myFunction();
