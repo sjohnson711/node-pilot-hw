@@ -32,23 +32,23 @@ async function fsPromises() {
 fsPromises();
 
 // Streams for large files- log first 40 chars of each chunk
-fs.writeFile(
-  path.join(__dirname, "/sample-files", "largefile.txt"),
-  "",
-  (err) => {
-    if (err) throw err;
-    console.log(`File Created...`);
-    fs.appendFile(
-      path.join(__dirname, "/sample-files", "largefile.txt"),
-      " ",
-      (err) => {
-        if (err) {
-          console.log(`File Created...`);
-        }
-      }
-    );
-  }
-);
+// fs.writeFile(
+//   path.join(__dirname, "/sample-files", "largefile.txt"),
+//   "",
+//   (err) => {
+//     if (err) throw err;
+//     console.log(`File Created...`);
+//     fs.appendFile(
+//       path.join(__dirname, "/sample-files", "largefile.txt"),
+//       " ",
+//       (err) => {
+//         if (err) {
+//           console.log(`File Created...`);
+//         }
+//       }
+//     );
+//   }
+// );
 
 let content = "";
 for (let i = 0; i < 100; i++) {
