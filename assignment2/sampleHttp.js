@@ -45,5 +45,5 @@ const server = http.createServer({ keepAliveTimeout: 60000 }, (req, res) => {
     res.end(JSON.stringify({ pathEntered: req.url }));
   }
 });
-
+//activate the server
 server.listen(8000);
