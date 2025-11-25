@@ -40,7 +40,7 @@ fs.writeFile(
     console.log(`File Created...`);
     fs.appendFile(
       path.join(__dirname, "/sample-files", "largefile.txt"),
-      " Seth is real",
+      " ",
       (err) => {
         if (err) {
           console.log(`File Created...`);
@@ -81,6 +81,8 @@ readFile.on("end", () =>
 
 
 
+//example for video
+// const fs = require('fs')
 
 
-
+// modules.export = myFunction();
