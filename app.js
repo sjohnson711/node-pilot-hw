@@ -1,6 +1,10 @@
 const express = require("express");
 const app = express();
 
+global.user_id = null;
+global.users = []; //-------> Array of objects of users
+global.tasks = [];
+
 const middleFunction = (req, res, next) => {
   console.log(
     `You have used ${req.method}, ${req.path}, and ${JSON.stringify(req.query)}`
@@ -10,20 +14,19 @@ const middleFunction = (req, res, next) => {
 
 app.use(middleFunction);
 
-app.get("/", (req, res) => {
-  res.send("Hello, World!");
-  res.send("Hello, World!");
-});
+app.use(express.json({ limit: "1kb" })); //parsing the body of the request json
 
+app.get("/", (req, res) => {
+  res.json({ message: "hello" });
+});
 
 const port = process.env.PORT || 3000;
 const server = app.listen(port, () =>
   console.log(`Server is listening on port ${port}...`)
-)
+);
 
-app.post('/api/users', (req, res) => {
-  res.send('Hello Seth')
-})
+const userRouter = require("./routes/userRoutes.js");
+app.use("/api/users", userRouter);
 
 const notFound = require("./middleware/not-found");
 app.use(notFound);
