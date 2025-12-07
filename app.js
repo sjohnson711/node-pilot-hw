@@ -28,6 +28,9 @@ const server = app.listen(port, () =>
 const userRouter = require("./routes/userRoutes.js");
 app.use("/api/users", userRouter);
 
+app.use("/api/users/logon", userRouter);
+app.use("/api/users/logoff", userRouter);
+
 const notFound = require("./middleware/not-found");
 app.use(notFound);
 
