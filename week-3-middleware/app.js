@@ -18,6 +18,42 @@ app.use((req, res, next) => {
 	next();
 })
 
+//error handling
+app.use((req, res, next) => {
+	res.status(500).json({
+		error: "Internal Servor Error", 
+		requestId: req.requestID
+	})
+})
+
+//limit the request sizing
+app.use(express.json({ limit: '1mb'})) //----> helps protect the server from denial of service
+
+
+//content-type validation
+app.use((req, res, next) => {
+	if(req.method === 'POST'){
+		const contentType = req.get('Content-Type')
+		if(!contentType || !contentType.includes('application/json')){
+			return res.status(400).json({ 
+				error: "Content-Type must be application/json",
+				requestId: req.requestID
+			})
+		}
+	}
+	next();
+})
+
+
+//404 Handler
+app.use((req, res, next) => {
+	res.status(404).json({
+		error: "Route not found", 
+		requestId: req.requestId
+	})
+})
+
+
 
 
 const validatingHeaders = (req, res, next) => {
@@ -29,14 +65,7 @@ const validatingHeaders = (req, res, next) => {
 };
 app.use(validatingHeaders);
 
-//Error Handling Middleware
-class Validation extends Error {
-  constructor(message) {
-    super(message);
-    this.name = "Validation Error"; //set the error name ( used for error identification)
-    this.statusCode = 400;
-  }
-}
+
 
 class NotFoundError extends Error {
   constructor(message) {
