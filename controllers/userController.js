@@ -11,9 +11,10 @@ const register = (req, res) => {
 const logon = (req, res) => {
   const { email, password } = req.body;
 
+  //find by email first
   const userFound = global.users.find((user) => user.email === email);
 
-  //find use by email
+  //if the user is not found or the password does not match --> send UNAUTHORIZED status Code
   if (!userFound || userFound.password !== password) {
     return res
       .status(StatusCodes.UNAUTHORIZED)

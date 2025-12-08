@@ -5,66 +5,72 @@ const dogsRouter = require("./routes/dogs");
 
 const app = express();
 
-// Your middleware here
+// ------------------------------------------------
+// 1. Request ID middleware
+// ------------------------------------------------
 app.use((req, res, next) => {
-  req.requestId = uuidv4();
-  res.setHeader("X-request-Id", req.requestID);
+  req.requestId = uuidv4(); // fixed typo: was requestID
+  res.setHeader("X-Request-Id", req.requestId); // fixed typo
   next();
 });
 
+// ------------------------------------------------
+// 2. Logging Middleware with using the request body
+// ------------------------------------------------
 app.use((req, res, next) => {
-  //logging
   const timestamp = new Date().toISOString();
   console.log(`[${timestamp}]: ${req.method} ${req.path} (${req.requestId})`);
   next();
 });
 
-//error handling
+// ------------------------------------------------
+// 3. Security Headers ---> make sure that I explore this
+// ------------------------------------------------
 app.use((req, res, next) => {
-  res.status(500).json({
-    error: "Internal Servor Error",
-    requestId: req.requestID,
-  });
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY"); // fixed casing
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  next();
 });
 
-//limit the request sizing
+// ------------------------------------------------
+// 4. limit the request sizing to protect servers
+// ------------------------------------------------
 app.use(express.json({ limit: "1mb" })); //----> helps protect the server from denial of service
 
-//content-type validation
+// ------------------------------------------------
+// 5. Validate Content-Type on Post request
+// ------------------------------------------------
 app.use((req, res, next) => {
   if (req.method === "POST") {
     const contentType = req.get("Content-Type");
     if (!contentType || !contentType.includes("application/json")) {
       return res.status(400).json({
+        //-----> Bad Request
         error: "Content-Type must be application/json",
-        requestId: req.requestID,
+        requestId: req.requestId, 
       });
     }
   }
   next();
 });
 
-//404 Handler
-app.use((req, res, next) => {
-  res.status(404).json({
-    error: "Route not found",
-    requestId: req.requestId,
-  });
-});
+//first test that I needed to allow the app to use the files where images are
+app.use("/images", express.static(path.join(__dirname, "public/images")));
 
-const validatingHeaders = (req, res, next) => {
-  const contentType = req.headers["content-type"];
-  if (!contentType || !contentType.includes("application/json")) {
-    res.status(400).json({ message: "wrong data" });
-    next();
-  }
-};
-app.use(validatingHeaders);
+//---------------------------------------------------
+// 6. Routes from the router creates in routes
+//---------------------------------------------------
+app.use("/", dogsRouter); // Do not remove this line
 
-class Validation extends Error {
+//---------------------------------------------------
+// 8. Custom Error Classes
+//---------------------------------------------------
+
+class ValidationError extends Error {
   constructor(message) {
-    super(message);
-    this.name = "Validation Error"; //set the error name ( used for error identification)
+    super(message); // ----> allows the constructor to set error message
+    this.name = "ValidationError";
     this.statusCode = 400;
   }
 }
@@ -77,10 +83,11 @@ class NotFoundError extends Error {
   }
 }
 
-class Unauthorized extends Error {
+class UnauthorizedError extends Error {
+  // fixed class name
   constructor(message) {
     super(message);
-    this.name = "UnathorizedError";
+    this.name = "UnauthorizedError"; // fixed typo
     this.statusCode = 401;
   }
 }
@@ -93,11 +100,43 @@ class DefaultErrors extends Error {
   }
 }
 
-app.use("/", dogsRouter); // Do not remove this line
+//---------------------------------------------------
+//9. Error Handling Middleware -----> !important always last
+//---------------------------------------------------
+app.use((err, req, res, next) => {
+  // Determine the status code from the error
+  const statusCode = err.statusCode || 500;
 
-module.exports = Validation, Unauthorized, DefaultErrors, NotFoundError; // Do not remove this line
+  // Log based on error type
+  if (statusCode >= 400 && statusCode < 500) {
+    console.warn(`WARN: ${err.name} ${err.message}`);
+  } else {
+    console.error(`ERROR: Error`);
+  }
+
+  // Send error response
+  res.status(statusCode).json({
+    error: err.message || "Internal Server Error",
+    requestId: req.requestId,
+  });
+});
+
+// 7. 404 Handler
+//---------------------------------------------------
+app.use((req, res, next) => {
+  res.status(404).json({
+    error: "Route not found",
+    requestId: req.requestId,
+  });
+});
+
+(module.exports = ValidationError),
+  UnauthorizedError,
+  DefaultErrors,
+  NotFoundError; // Do not remove this line
 
 // Do not remove this line
 if (require.main === module) {
   app.listen(3000, () => console.log("Server listening on port 3000"));
 }
+module.exports = app;

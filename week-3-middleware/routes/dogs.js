@@ -1,24 +1,32 @@
 const express = require("express");
 const router = express.Router();
 const dogs = require("../dogData.js");
-const { ValidationError, NotFoundError } = require('../errors')
+const { ValidationError, NotFoundError } = require("../errors");
 router.get("/dogs", (req, res) => {
   res.json(dogs);
 });
 
 router.post("/adopt", (req, res) => {
-  const { name, address, email, dogName } = req.body;
+  const { name, email, dogName } = req.body;
+
   if (!name || !email || !dogName) {
-    throw new ValidationError("Missing required Fields")
+    throw new ValidationError("Missing required fields");
   }
 
-  if(!dogs|| dogs.status !== 'available'){
-    throw new NotFoundError("not found or not available")
+  const dog = dogs.find((d) => d.name === dogName);
+
+  if (!dog || dog.status !== "available") {
+    throw new NotFoundError("Dog not found or not available");
   }
+
+  res.status(201).json({
+    message: `Adoption request received. We will contact you at ${email} for further details.`,
+    requestId: req.requestId,
+  });
 });
 
 router.get("/error", (req, res) => {
-  throw new Error("Test error");
+  throw new Error("Internal Server Error");
 });
 
 module.exports = router;
