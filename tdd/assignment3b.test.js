@@ -13,10 +13,11 @@ beforeAll(() => {
 	warnSpy = jest.spyOn(console, "warn").mockImplementation(() => {});
 });
 
-afterAll(() => {
+afterAll(async () => {
 	logSpy.mockRestore();
 	errorSpy.mockRestore();
 	warnSpy.mockRestore();
+	await app.close();
 });
 
 describe("Assignment 3b: Middleware Integration", () => {
