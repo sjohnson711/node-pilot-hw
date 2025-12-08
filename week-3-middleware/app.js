@@ -18,6 +18,7 @@ app.use((req, res, next) => {  //logging
 	next();
 })
 
+<<<<<<< HEAD
 //error handling
 app.use((req, res, next) => {
 	res.status(500).json({
@@ -99,3 +100,7 @@ app.use("/", dogsRouter); // Do not remove this line
 if (require.main === module) {
   app.listen(3000, () => console.log("Server listening on port 3000"));
 }
+=======
+const server =	app.listen(3000, () => console.log("Server listening on port 3000"));
+module.exports = server;
+>>>>>>> main
