@@ -23,9 +23,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// ------------------------------------------------
+// ------------------------------------------------------->
 // 3. Security Headers ---> make sure that I explore this
-// ------------------------------------------------
+// ------------------------------------------------------->
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY"); // fixed casing
@@ -33,14 +33,14 @@ app.use((req, res, next) => {
   next();
 });
 
-// ------------------------------------------------
+// ------------------------------------------------>
 // 4. limit the request sizing to protect servers
-// ------------------------------------------------
+// ------------------------------------------------>
 app.use(express.json({ limit: "1mb" })); //----> helps protect the server from denial of service
 
-// ------------------------------------------------
+// ------------------------------------------------>
 // 5. Validate Content-Type on Post request
-// ------------------------------------------------
+// ------------------------------------------------>
 app.use((req, res, next) => {
   if (req.method === "POST") {
     const contentType = req.get("Content-Type");
@@ -58,14 +58,14 @@ app.use((req, res, next) => {
 //first test that I needed to allow the app to use the files where images are
 app.use("/images", express.static(path.join(__dirname, "public/images")));
 
-//---------------------------------------------------
+//--------------------------------------------------->
 // 6. Routes from the router creates in routes
-//---------------------------------------------------
+//--------------------------------------------------->
 app.use("/", dogsRouter); // Do not remove this line
 
-//---------------------------------------------------
+//--------------------------------------------------->
 // 8. Custom Error Classes
-//---------------------------------------------------
+//--------------------------------------------------->
 
 class ValidationError extends Error {
   constructor(message) {
@@ -100,9 +100,9 @@ class DefaultErrors extends Error {
   }
 }
 
-//---------------------------------------------------
+//----------------------------------------------------------->
 //9. Error Handling Middleware -----> !important always last
-//---------------------------------------------------
+//----------------------------------------------------------->
 app.use((err, req, res, next) => {
   // Determine the status code from the error
   const statusCode = err.statusCode || 500;
@@ -121,8 +121,9 @@ app.use((err, req, res, next) => {
   });
 });
 
+//--------------------------------------------------->
 // 7. 404 Handler
-//---------------------------------------------------
+//--------------------------------------------------->
 app.use((req, res, next) => {
   res.status(404).json({
     error: "Route not found",

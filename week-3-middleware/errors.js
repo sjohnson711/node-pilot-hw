@@ -2,7 +2,7 @@
 class ValidationError extends Error {
   constructor(message) {
     super(message);
-    this.name = "ValidationError"; //set the error name ( used for error identification)
+    this.name = "ValidationError"; 
     this.statusCode = 400;
   }
 }
