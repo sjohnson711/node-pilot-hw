@@ -9,7 +9,7 @@ app.use("/api/tasks", authMiddleware, taskRouter) // -----> Auth get called so t
 
 global.user_id = null;
 global.users = []; //-------> Array of objects of users
-global.tasks = [];
+global.tasks = []; //-------> using this in my taskController.js
 
 const middleFunction = (req, res, next) => {
   console.log(
