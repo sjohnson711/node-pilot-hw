@@ -1,3 +1,5 @@
+const { StatusCodes } = require("http-status-codes");
+
 //Going to create all the request handler functions in this file such as create, index, show, update, deleteTask
 const taskCounter = (() => {
   let lastTaskNumber = 0;
@@ -59,31 +61,51 @@ const index = (req, res) => {
   if (!index) {
     res.status(404).json({ message: "Not Found" });
   }
- 
 };
 
 //////////////////////////////Update/////////////////
 const update = (req, res) => {
-    const taskId = parseInt(req.params?.id);
+  const taskId = parseInt(req.params?.id);
 
-    if(!taskId) {
-        return res.status(400).json({ message: "The task ID passed is not valid"})
-    }
-    const currentTask = global.task.find((task) => task.userId === global.user_id.email && task.id === taskId)
+  if (!taskId) {
+    return res.status(400).json({ message: "The task ID passed is not valid" });
+  }
+  const currentTask = global.task.find(
+    (task) => task.userId === global.user_id.email && task.id === taskId
+  );
 
-    if(!currentTask){
-        return res.status(404).json({message: "That task was not found"})
-    }
-    Object.assign(currentTask, req.body)
+  if (!currentTask) {
+    return res.status(404).json({ message: "That task was not found" });
+  }
+  Object.assign(currentTask, req.body);
 
-    const { userId, ...sanitizedTask } = currentTask;
-    res.json(sanitizedTask)
-    
-}
+  const { userId, ...sanitizedTask } = currentTask;
+  res.json(sanitizedTask);
+};
+
+//////////////////SHOW///////////////////////////
+const show = (req, res) => {
+  const taskId = parseInt(req.params?.id);
+
+  if (!taskId) {
+    return res.status(400).json({ message: "Not able to show" });
+  }
+  const task = global.tasks.find(
+    (task) => task.id === taskId && task.userid === global.user_id.email
+  );
+
+  if (!task) {
+    return res.status(404).json({ message: "That task was not found" });
+  }
+
+  const { userId, ...sanitizedTask } = task;
+  res.json(sanitizedTask);
+};
 
 module.exports = {
   create,
   index,
   update,
   deleteTask,
+  show,
 };
