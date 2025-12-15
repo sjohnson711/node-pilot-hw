@@ -91,7 +91,7 @@ const show = (req, res) => {
     return res.status(400).json({ message: "Not able to show" });
   }
   const task = global.tasks.find(
-    (task) => task.id === taskId && task.userid === global.user_id.email
+    (task) => task.id === taskId && task.userId === global.user_id.email
   );
 
   if (!task) {
