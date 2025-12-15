@@ -1,34 +1,89 @@
 //Going to create all the request handler functions in this file such as create, index, show, update, deleteTask
 const taskCounter = (() => {
-    let lastTaskNumber = 0;
-    return () => {
-        lastTaskNumber += 1;
-        return lastTaskNumber
-    }
+  let lastTaskNumber = 0;
+  return () => {
+    lastTaskNumber += 1;
+    return lastTaskNumber;
+  };
 })();
 
-
+/////////////////////////CREATE///////////////////////////
 const create = (req, res) => {
-    const newTask = {...req.body, id: taskCounter(), userId: global.user_id.email};
-    global.tasks.push(newTask);
-    const {userId, ...sanitizedTask} = newTask
-    res.json(sanitizedTask)
-}
+  const newTask = {
+    ...req.body,
+    isCompleted: req.body.isCompleted ?? false,
+    id: taskCounter(),
+    userId: global.user_id.email,
+  };
+
+  global.tasks.push(newTask);
+
+  const { userId, ...sanitizedTask } = newTask;
+
+  res.status(201).json(sanitizedTask);
+};
+
 //if there are no params, the ? makes sure that you get a null
-const taskToFind = parseInt(req.params?.id); 
-if(!taskToFind){
-    return res.status(400).json({ message: "The task ID passed is not valid "})
+///////////////////////////DELETE//////////////////////////
+const deleteTask = (req, res) => {
+  const taskToFind = parseInt(req.params?.id);
+  if (!taskToFind) {
+    return res
+      .status(400)
+      .json({ message: "The task ID passed is not valid " });
+  }
+  //we get the index, not the task, so that we can splice it
+  const taskIndex = global.tasks.findIndex(
+    (task) => task.id === taskToFind && task.userId === global.user_id.email
+  ); //---> if we can find the task and user has the right email!
+
+  if (taskIndex === -1) {
+    return res
+      .status(StatusCodes.NOT_FOUND)
+      .json({ message: "That task was not found" });
+    //else it's a 404
+  }
+
+  const task = { userId, ...global.tasks[taskIndex] }; //make a copy without the userId
+  global.tasks.splice(taskIndex, 1); //do the delete
+  return res.json(task); //return the entry just deleted. The default status code, OK, is returned.
+};
+
+//////////////////////INDEX/////////////////////////////
+const index = (req, res) => {
+  const userTasks = global.tasks
+    .filter((task) => task.userId === global.user_id.email)
+    .map(({ userId, ...task }) => task); //removes userId -----> sanitizes the data
+  res.status(200).json(userTasks);
+
+  if (!index) {
+    res.status(404).json({ message: "Not Found" });
+  }
+ 
+};
+
+//////////////////////////////Update/////////////////
+const update = (req, res) => {
+    const taskId = parseInt(req.params?.id);
+
+    if(!taskId) {
+        return res.status(400).json({ message: "The task ID passed is not valid"})
+    }
+    const currentTask = global.task.find((task) => task.userId === global.user_id.email && task.id === taskId)
+
+    if(!currentTask){
+        return res.status(404).json({message: "That task was not found"})
+    }
+    Object.assign(currentTask, req.body)
+
+    const { userId, ...sanitizedTask } = currentTask;
+    res.json(sanitizedTask)
+    
 }
-//we get the index, not the task, so that we can splice it
-const taskIndex = global.tasks.findIndex((task) => task.id === taskToFind && task.userId === global.user_id.email);  //---> if we can find the task and user has the right email!
 
-if(taskIndex === -1) {
-    return res.status(StatusCodes.NOT_FOUND).json({ message: "That task was not found"})
-    //else it's a 404 
-
-}
-
-const task = { userId, ...global.tasks[taskIndex]}; //make a copy without the userId
-global.tasks.splice(taskIndex, 1); //do the delete
-return res.json(task) //return the entry just deleted. The default status code, OK, is returned. 
-
+module.exports = {
+  create,
+  index,
+  update,
+  deleteTask,
+};
