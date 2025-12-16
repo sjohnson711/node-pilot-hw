@@ -11,8 +11,10 @@ const taskCounter = (() => {
 
 /////////////////////////CREATE///////////////////////////
 const create = (req, res) => {
-  if(!global.user_id){
-    return res.status(StatusCodes.UNAUTHORIZED).json({ message: "Not Logged in"})
+  if (!global.user_id) {
+    return res
+      .status(StatusCodes.UNAUTHORIZED)
+      .json({ message: "Not Logged in" });
   }
   if (!req.body) req.body = {};
   const newTask = {
@@ -40,7 +42,7 @@ const deleteTask = (req, res) => {
   }
   //we get the index, not the task, so that we can splice it
   const taskIndex = global.tasks.findIndex(
-    (task) => task.id === taskToFind && task.userId === global.user_id.email
+    (task) => task.id === taskToFind && task.userId === global.user_id?.email
   ); //---> if we can find the task and user has the right email!
 
   if (taskIndex === -1) {
@@ -50,7 +52,7 @@ const deleteTask = (req, res) => {
     //else it's a 404
   }
 
-  const {userId, ...task} = global.tasks[taskIndex]//make a copy without the userId
+  const { userId, ...task } = global.tasks[taskIndex]; //make a copy without the userId
   global.tasks.splice(taskIndex, 1); //do the delete
   return res.json(task); //return the entry just deleted. The default status code, OK, is returned.
 };
@@ -60,17 +62,13 @@ const index = (req, res) => {
   const userTasks = global.tasks.filter(
     (task) => task.userId === global.user_id.email
   );
-  if(userTasks.length === 0) {
-    return res.status(StatusCodes.NOT_FOUND).json({ message: "Not Found"})
+  if (userTasks.length === 0) {
+    return res.status(StatusCodes.NOT_FOUND).json({ message: "Not Found" });
   }
 
   const sanitizedTask = userTasks.map(({ userId, ...task }) => task); //removes userId -----> sanitizes the data
   res.status(200).json(sanitizedTask);
-
-
-  }
-;
-
+};
 //////////////////////////////Update/////////////////
 const update = (req, res) => {
   const taskId = parseInt(req.params?.id);
@@ -99,7 +97,7 @@ const show = (req, res) => {
     return res.status(400).json({ message: "Not able to show" });
   }
   const task = global.tasks.find(
-    (task) => task.id === taskId && task.userId === global.user_id.email
+    (task) => task.id === taskId && task.userId === global.user_id?.email
   );
 
   if (!task) {
