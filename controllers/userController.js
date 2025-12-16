@@ -1,21 +1,50 @@
 const { StatusCodes } = require("http-status-codes");
+const crypto = require("crypto");
+const util = require("util");
+const scrypt = util.promisify(crypto.scrypt);
 
-const register = (req, res) => {
-  const newUser = { ...req.body }; // this makes a copy
+async function hashPassword(password) {
+  const salt = crypto.randomBytes(16).toString("hex");
+  const derivedKey = await scrypt(password, salt, 64);
+  return `${salt}:${derivedKey.toString("hex")}`;
+}
+
+async function comparePassword(inputPassword, storedHash) {
+  const [salt, key] = storedHash.split(":");
+  const keyBuffer = Buffer.from(key, "hex");
+  const derivedKey = await scrypt(inputPassword, salt, 64);
+  return crypto.timingSafeEqual(keyBuffer, derivedKey);
+}
+
+const register = async (req, res) => {
+  if (!req.body) req.body = {};
+
+  const { name, email, password } = req.body;
+  const hashedPassword = await hashPassword(password);
+  const newUser = { name, email, hashedPassword }; // this makes a copy
+
   global.users.push(newUser);
   global.user_id = newUser; // After the registration step, the user is set to logged on.
-  delete req.body.password;
-  res.status(201).json(req.body);
+
+  res.status(StatusCodes.CREATED).json({ name, email });
 };
 
-const logon = (req, res) => {
+const logon = async (req, res) => {
   const { email, password } = req.body;
 
   //find by email first
   const userFound = global.users.find((user) => user.email === email);
 
   //if the user is not found or the password does not match --> send UNAUTHORIZED status Code
-  if (!userFound || userFound.password !== password) {
+  if (!userFound) {
+    return res
+      .status(StatusCodes.UNAUTHORIZED)
+      .json({ message: "Authentication Failed" });
+  }
+
+  const match = await comparePassword(password, userFound.hashedPassword);
+
+  if (!match) {
     return res
       .status(StatusCodes.UNAUTHORIZED)
       .json({ message: "Authentication Failed" });

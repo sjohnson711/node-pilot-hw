@@ -11,6 +11,10 @@ const taskCounter = (() => {
 
 /////////////////////////CREATE///////////////////////////
 const create = (req, res) => {
+  if(!global.user_id){
+    return res.status(StatusCodes.UNAUTHORIZED).json({ message: "Not Logged in"})
+  }
+  if (!req.body) req.body = {};
   const newTask = {
     ...req.body,
     isCompleted: req.body.isCompleted ?? false,
@@ -46,22 +50,26 @@ const deleteTask = (req, res) => {
     //else it's a 404
   }
 
-  const task = { userId, ...global.tasks[taskIndex] }; //make a copy without the userId
+  const {userId, ...task} = global.tasks[taskIndex]//make a copy without the userId
   global.tasks.splice(taskIndex, 1); //do the delete
   return res.json(task); //return the entry just deleted. The default status code, OK, is returned.
 };
 
 //////////////////////INDEX/////////////////////////////
 const index = (req, res) => {
-  const userTasks = global.tasks
-    .filter((task) => task.userId === global.user_id.email)
-    .map(({ userId, ...task }) => task); //removes userId -----> sanitizes the data
-  res.status(200).json(userTasks);
-
-  if (!index) {
-    res.status(404).json({ message: "Not Found" });
+  const userTasks = global.tasks.filter(
+    (task) => task.userId === global.user_id.email
+  );
+  if(userTasks.length === 0) {
+    return res.status(StatusCodes.NOT_FOUND).json({ message: "Not Found"})
   }
-};
+
+  const sanitizedTask = userTasks.map(({ userId, ...task }) => task); //removes userId -----> sanitizes the data
+  res.status(200).json(sanitizedTask);
+
+
+  }
+;
 
 //////////////////////////////Update/////////////////
 const update = (req, res) => {
@@ -70,8 +78,8 @@ const update = (req, res) => {
   if (!taskId) {
     return res.status(400).json({ message: "The task ID passed is not valid" });
   }
-  const currentTask = global.task.find(
-    (task) => task.userId === global.user_id.email && task.id === taskId
+  const currentTask = global.tasks.find(
+    (task) => task.userId === global.user_id?.email && task.id === taskId
   );
 
   if (!currentTask) {
