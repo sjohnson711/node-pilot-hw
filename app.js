@@ -1,9 +1,15 @@
 const express = require("express");
 const app = express();
+const authMiddleware = require('./middleware/auth')
+
+const taskRouter = require("./routers/taskRoutes")
+app.use("/api/tasks", authMiddleware, taskRouter) // -----> Auth get called so that if the user is not loggeeon they cannot access the tasks.
+
+
 
 global.user_id = null;
 global.users = []; //-------> Array of objects of users
-global.tasks = [];
+global.tasks = []; //-------> using this in my taskController.js
 
 const middleFunction = (req, res, next) => {
   console.log(
@@ -81,3 +87,5 @@ app.post("./testpost", (req, res) => {
 });
 
 module.exports = { app, server };
+
+
