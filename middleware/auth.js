@@ -1,8 +1,10 @@
-(req, res, next) => {
+const { StatusCodes } = require('http-status-codes' )
+
+module.exports = (req, res, next) => {
     if(global.user_id === null){
-        return res.status(401).json({ message: "unauthorized"})
+        return res.status(StatusCodes.UNAUTHORIZED).json({ message: "unauthorized"})
     }
-    res.status(200).json({message: "user found"})
+    
     next()
 
 }

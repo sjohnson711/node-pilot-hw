@@ -1,4 +1,5 @@
 const { StatusCodes } = require("http-status-codes");
+const { taskSchema, patchTaskSchema } = require("../validation/taskSchema");
 
 //Going to create all the request handler functions in this file such as create, index, show, update, deleteTask
 const taskCounter = (() => {
@@ -17,9 +18,18 @@ const create = (req, res) => {
       .json({ message: "Not Logged in" });
   }
   if (!req.body) req.body = {};
+
+  const { error, value } = taskSchema.validate(req.body);
+
+  if (error) {
+    return res
+      .status(StatusCodes.BAD_REQUEST)
+      .json({ message: error.details[0].message });
+  }
+
   const newTask = {
-    ...req.body,
-    isCompleted: req.body.isCompleted ?? false,
+    ...value,
+    isCompleted: value.isCompleted ?? false,
     id: taskCounter(),
     userId: global.user_id.email,
   };
@@ -28,7 +38,7 @@ const create = (req, res) => {
 
   const { userId, ...sanitizedTask } = newTask;
 
-  res.status(201).json(sanitizedTask);
+  res.status(StatusCodes.CREATED).json(sanitizedTask);
 };
 
 //if there are no params, the ? makes sure that you get a null
@@ -76,14 +86,24 @@ const update = (req, res) => {
   if (!taskId) {
     return res.status(400).json({ message: "The task ID passed is not valid" });
   }
+
+  const { error, value } = patchTaskSchema.validate(req.body);
+  if (error) {
+    return res
+      .status(StatusCodes.BAD_REQUEST)
+      .json({ message: error.details[0].message });
+  }
+
   const currentTask = global.tasks.find(
     (task) => task.userId === global.user_id?.email && task.id === taskId
   );
 
   if (!currentTask) {
-    return res.status(404).json({ message: "That task was not found" });
+    return res
+      .status(StatusCodes.NOT_FOUND)
+      .json({ message: "That task was not found" });
   }
-  Object.assign(currentTask, req.body);
+  Object.assign(currentTask, value);
 
   const { userId, ...sanitizedTask } = currentTask;
   res.json(sanitizedTask);

@@ -12,13 +12,4 @@ const patchTaskSchema = Joi.object({
   .min(1)
   .message("No attributes to change were specified.");
 
-const { error, value } = userSchema.validate(
-  {
-    name: "Bob",
-    email: "nonsense",
-    password: "password",
-    favoriteColor: "blue",
-  },
-  { abortEarly: false }
-);
 module.exports = { taskSchema, patchTaskSchema };
