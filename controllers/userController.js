@@ -2,7 +2,7 @@ const { StatusCodes } = require("http-status-codes");
 const crypto = require("crypto");
 const util = require("util");
 const scrypt = util.promisify(crypto.scrypt);
-const {userSchema} = require('../validation/userSchema')
+const { userSchema } = require("../validation/userSchema");
 
 async function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString("hex");
@@ -20,15 +20,23 @@ async function comparePassword(inputPassword, storedHash) {
 const register = async (req, res) => {
   if (!req.body) req.body = {};
 
-  const { value, error } = userSchema.validate(req.body);
+  const { value, error } = userSchema.validate(req.body); //validates the userSchema
 
-  if(error){
+  if (error) {
     return res
       .status(StatusCodes.BAD_REQUEST)
-      .json({ message: error.details[0].message })
+      .json({ message: error.details[0].message });
   }
 
-  const { name, email, password } = req.body;
+  const { name, email, password } = value;
+
+  const existingUser = global.users.find((user) => user.email === email);
+  if(existingUser){
+    return res  
+      .status(400)
+      .json({ message: "User Already Exist "})
+  };
+
   const hashedPassword = await hashPassword(password);
   const newUser = { name, email, hashedPassword }; // this makes a copy
 
@@ -39,10 +47,10 @@ const register = async (req, res) => {
 };
 
 const logon = async (req, res) => {
-  if(!req.body || !req.body.email || !req.body.password){
-    return res  
+  if (!req.body || !req.body.email || !req.body.password) {
+    return res
       .status(StatusCodes.BAD_REQUEST)
-      .json({ message: "Email and password are required"})
+      .json({ message: "Email and password are required" });
   }
 
   const { email, password } = req.body;
