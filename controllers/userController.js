@@ -17,6 +17,7 @@ async function comparePassword(inputPassword, storedHash) {
   return crypto.timingSafeEqual(keyBuffer, derivedKey);
 }
 
+//REGISTER
 const register = async (req, res) => {
   if (!req.body) req.body = {};
 
@@ -46,6 +47,7 @@ const register = async (req, res) => {
   res.status(StatusCodes.CREATED).json({ name, email });
 };
 
+//LOGON
 const logon = async (req, res) => {
   if (!req.body || !req.body.email || !req.body.password) {
     return res
@@ -56,13 +58,21 @@ const logon = async (req, res) => {
   const { email, password } = req.body;
 
   //find by email first
-  const userFound = global.users.find((user) => user.email === email);
+  const result = await pool.query("SELECT * FROM users WHERE email = $1", [email]);
 
   //if the user is not found or the password does not match --> send UNAUTHORIZED status Code
-  if (!userFound) {
+  if(result.rows.length === 0){
     return res
       .status(StatusCodes.UNAUTHORIZED)
-      .json({ message: "Authentication Failed" });
+      .json({ message: "Authentication Failed"})
+  }
+  
+  const isPasswordValid = await comparePassword(password, result.rows[0])
+
+  if(!isPasswordValid){
+    return res  
+      .status(StatusCodes.UNAUTHORIZED)
+      .json({message: "Authetication Failed"})
   }
 
   const match = await comparePassword(password, userFound.hashedPassword);
@@ -73,7 +83,7 @@ const logon = async (req, res) => {
       .json({ message: "Authentication Failed" });
   }
 
-  global.user_id = userFound; //based off the password and the email matching
+  global.user_id = result.rows[0].id; //based off the password and the email matching
 
   return res
     .status(StatusCodes.OK)
