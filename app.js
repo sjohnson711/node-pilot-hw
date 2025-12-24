@@ -1,6 +1,7 @@
 const express = require("express");
 const app = express();
 const authMiddleware = require('./middleware/auth')
+const pool = require("./db/pg-pool");
 
 const taskRouter = require("./routers/taskRoutes")
 app.use("/api/tasks", authMiddleware, taskRouter) // -----> Auth get called so that if the user is not loggeeon they cannot access the tasks.
@@ -41,7 +42,18 @@ const notFound = require("./middleware/not-found");
 app.use(notFound);
 
 const errorHandler = require("./middleware/error-handler");
+
 app.use(errorHandler);
+
+//health check added here 
+app.get("/health", async (req, res) => {
+  try {
+    await pool.query("SELECT 1");
+    res.json({ status: "ok", db: "connected" });
+  } catch (err) {
+    res.status(500).json({ message: `db not connected, error: ${ err.message }` });
+  }
+});
 
 //Exit Cleanly from Express Program
 server.on("error", (err) => {
@@ -62,6 +74,7 @@ async function shutdown(code = 0) {
     await new Promise((resolve) => server.close(resolve));
     console.log("HTTP server closed.");
     // If you have DB connections, close them here
+    await pool.end();
   } catch (err) {
     console.error("Error during shutdown:", err);
     code = 1;
@@ -85,6 +98,8 @@ process.on("unhandledRejection", (reason) => {
 app.post("./testpost", (req, res) => {
   res.send(`Post request received`);
 });
+
+//
 
 module.exports = { app, server };
 
