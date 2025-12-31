@@ -1,6 +1,9 @@
 const { StatusCodes } = require("http-status-codes");
 
 const errorHandlerMiddleware = (err, req, res, next) => {
+  if(err.code === "ECONNEREFUSED" && err.port === 5432){
+    console.log("The database connection was refused. Is your database running?")
+  }
   console.error(
     "Internal server error: ",
     err.constructor.name,

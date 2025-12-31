@@ -1,0 +1,51 @@
+
+SELECT orders.order_id, SUM(products.price * line_items.quantity) AS total_price FROM orders JOIN line_items ON orders.order_id = line_items.order_id JOIN products ON line_items.product_id = products.product_id GROUP BY orders.order_id ORDER BY orders.order_id LIMIT 5;
+
+#for each customer find the average total price of their orders, and return the results ordered by customer name.
+SELECT c.customer_name, AVG(t.total_price) AS average_order_price FROM customers c JOIN (SELECT o.order_id, o.customer_id, SUM(p.price * li.quantity) AS total_price FROM orders o JOIN line_items li ON o.order_id = li.order_id JOIN products p ON li.product_id = p.product_id GROUP BY o.order_id, o.customer_id) AS t ON c.customer_id = t.customer_id GROUP BY c.customer_id, c.customer_name ORDER BY c.customer_name;
+
+#creating a new order
+#customer_id for Perez and Sons
+SELECT c.customer_id FROM customers c WHERE c.customer_name = 'Perez and Sons';
+
+#Find employee Id for Miranda Harris
+SELECT employee_id FROM employees WHERE first_name = 'Miranda' AND last_name = 'Harris';
+
+#Next write a query to find product_id for the 5 least expensive products.
+select p.product_id from products p order by p.price asc limit 5;
+
+BEGIN;
+
+INSERT INTO orders (customer_id, employee_id, date)
+SELECT
+  customer_id,
+  employee_id,
+  CURRENT_DATE
+FROM customers
+JOIN employees
+  ON employees.first_name = 'Miranda'
+  AND employees.last_name = 'Harris'
+WHERE customers.customer_name = 'Perez and Sons'
+RETURNING order_id;
+
+INSERT INTO line_items (order_id, product_id, quantity)
+VALUES
+  (999, 23, 10),
+  (999, 24, 10),
+  (999, 25, 10),
+  (999, 26, 10),
+  (999, 27, 10);
+
+COMMIT;
+
+SELECT * FROM line_items WHERE order_id = 999;
+
+SELECT
+  last_name,
+  first_name,
+  COUNT(*) AS order_count
+FROM employees
+JOIN orders ON employees.employee_id = orders.employee_id
+GROUP BY employees.employee_id, last_name, first_name
+HAVING COUNT(*) > 5
+ORDER BY last_name ASC, first_name ASC;
