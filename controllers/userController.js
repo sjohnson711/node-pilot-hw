@@ -63,19 +63,18 @@ const logon = async (req, res) => {
       .json({ message: "Email and password are required" });
   }
 
-  const { email, password } = req.body;
+  let { email, password } = req.body;
 
-  const result = await pool.query("SELECT * FROM users WHERE email = $1", [
-    email,
-  ]);
+  email = email.lowerCase();
 
-  if (result.rows.length === 0) {
-    return res
-      .status(StatusCodes.UNAUTHORIZED)
-      .json({ message: "Authentication Failed" });
+  const user = await prisma.user.findUnique({ where: { email } });
+
+  if(!user) {
+    return res  
+          .status(StatusCodes.UNAUTHORIZED)
+          .json({ message: "Authentication Failed"})
   }
 
-  const user = result.rows[0];
 
   const isPasswordValid = await comparePassword(password, user.hashed_password);
 
