@@ -1,13 +1,11 @@
 const express = require("express");
 const app = express();
-const authMiddleware = require('./middleware/auth')
+const authMiddleware = require("./middleware/auth");
 const pool = require("./db/pg-pool");
-const prisma = require("/db/prisma")
+const prisma = require("/db/prisma");
 
-const taskRouter = require("./routers/taskRoutes")
-app.use("/api/tasks", authMiddleware, taskRouter) // -----> Auth get called so that if the user is not loggeeon they cannot access the tasks.
-
-
+const taskRouter = require("./routers/taskRoutes");
+app.use("/api/tasks", authMiddleware, taskRouter); // -----> Auth get called so that if the user is not loggeeon they cannot access the tasks.
 
 global.user_id = null;
 global.users = []; //-------> Array of objects of users
@@ -46,13 +44,15 @@ const errorHandler = require("./middleware/error-handler");
 
 app.use(errorHandler);
 
-//health check added here 
+//health check added here
 app.get("/health", async (req, res) => {
   try {
-    await prisma.queryRaw `SELECT * WHERE id = ${id}`;
+    await prisma.queryRaw`SELECT * WHERE id = ${id}`;
     res.json({ status: "ok", db: "connected" });
   } catch (err) {
-    res.status(500).json({ status: 'error', db: 'not connected', error: err.message });
+    res
+      .status(500)
+      .json({ status: "error", db: "not connected", error: err.message });
   }
 });
 
@@ -72,7 +72,7 @@ async function shutdown(code = 0) {
   isShuttingDown = true;
   console.log("Shutting down gracefully...");
   await prisma.$disconnect(); // shuts down prisma
-  console.log("Prisma disconnected")
+  console.log("Prisma disconnected");
   try {
     await new Promise((resolve) => server.close(resolve));
     console.log("HTTP server closed.");
@@ -105,5 +105,3 @@ app.post("./testpost", (req, res) => {
 //
 
 module.exports = { app, server };
-
-
