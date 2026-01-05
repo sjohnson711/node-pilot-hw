@@ -10,3 +10,4 @@ router.post("/logon", userLogon);
 router.post("/logoff", userLogoff);
 
 module.exports = router;
+//used to route to the correct urls
