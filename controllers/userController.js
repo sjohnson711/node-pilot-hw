@@ -1,8 +1,10 @@
+require("dotenv").config();
 const { StatusCodes } = require("http-status-codes");
 const crypto = require("crypto");
 const util = require("util");
+const { PrismaClient } = require("@prisma/client");
+const prisma = new PrismaClient();
 const scrypt = util.promisify(crypto.scrypt);
-const pool = require("../db/pg-pool");
 const { userSchema } = require("../validation/userSchema");
 
 async function hashPassword(password) {
@@ -18,11 +20,11 @@ async function comparePassword(inputPassword, storedHash) {
   return crypto.timingSafeEqual(keyBuffer, derivedKey);
 }
 
-//REGISTER
+// REGISTER
 const register = async (req, res, next) => {
   if (!req.body) req.body = {};
 
-  const { value, error } = userSchema.validate(req.body, { abortEarly: false }); //validates the userSchema
+  const { value, error } = userSchema.validate(req.body, { abortEarly: false });
 
   if (error) {
     return res
@@ -31,31 +33,34 @@ const register = async (req, res, next) => {
   }
 
   const { name, email, password } = value;
-
   const hashedPassword = await hashPassword(password);
 
+  let user = null;
+
   try {
-    const result = await pool.query(
-      `INSERT INTO users (name, email, hashed_password)
-      VALUES($1, $2, $3)
-      RETURNING id, name, email`,
-      [name, email, hashedPassword]
-    );
-
-    global.user_id = result.rows[0].id; // After the registration step, the user is set to logged on.
-
-    return res.status(StatusCodes.CREATED).json(result.rows[0]);
-  } catch (e) {
-    if (e.code === "23505") {
+    user = await prisma.user.create({
+      data: {
+        name,
+        email,
+        hashedPassword: hashedPassword, // Matches schema camelCase
+      },
+      select: { name: true, email: true, id: true },
+    });
+  } catch (err) {
+    if (err.name === "PrismaClientKnownRequestError" && err.code === "P2002") {
       return res
         .status(StatusCodes.BAD_REQUEST)
         .json({ message: "User already exists " });
+    } else {
+      return next(err);
     }
-    return next(e);
   }
+
+  global.user_id = user.id;
+  return res.status(StatusCodes.CREATED).json(user);
 };
 
-//LOGON
+// LOGON
 const logon = async (req, res) => {
   if (!req.body || !req.body.email || !req.body.password) {
     return res
@@ -63,21 +68,18 @@ const logon = async (req, res) => {
       .json({ message: "Email and password are required" });
   }
 
-  const { email, password } = req.body;
+  let { email, password } = req.body;
+  email = email.toLowerCase();
 
-  const result = await pool.query("SELECT * FROM users WHERE email = $1", [
-    email,
-  ]);
+  const user = await prisma.user.findUnique({ where: { email } });
 
-  if (result.rows.length === 0) {
+  if (!user) {
     return res
       .status(StatusCodes.UNAUTHORIZED)
       .json({ message: "Authentication Failed" });
   }
 
-  const user = result.rows[0];
-
-  const isPasswordValid = await comparePassword(password, user.hashed_password);
+  const isPasswordValid = await comparePassword(password, user.hashedPassword);
 
   if (!isPasswordValid) {
     return res
@@ -92,12 +94,11 @@ const logon = async (req, res) => {
     email: user.email,
   });
 };
-///////////LOGOFF///////////////////////
+
+// LOGOFF
 const logoff = (req, res) => {
   global.user_id = null;
   return res.status(200).json({ message: "logged off" });
 };
 
 module.exports = { register, logon, logoff };
-
-//The module is user for logon, logoff and other controllables
