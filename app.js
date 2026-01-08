@@ -1,7 +1,7 @@
 const express = require("express");
 const app = express();
 const authMiddleware = require("./middleware/auth");
-const prisma = require("/db/prisma");
+const prisma = require("./db/prisma");
 
 const taskRouter = require("./routers/taskRoutes");
 app.use("/api/tasks", authMiddleware, taskRouter); // -----> Auth get called so that if the user is not loggeeon they cannot access the tasks.
