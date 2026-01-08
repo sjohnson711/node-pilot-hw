@@ -52,10 +52,8 @@ const deleteTask = async (req, res, next) => {
   try {
     const deletedTask = await prisma.task.delete({
       where: {
-        id_userId: {
-          id,
-          userId: global.user_id,
-        },
+        id,
+        userId: global.user_id,
       },
       select: { id: true, title: true, isCompleted: true },
     });
@@ -112,10 +110,8 @@ const update = async (req, res, next) => {
     const task = await prisma.task.update({
       data: value,
       where: {
-        id_userId: {
-          id,
-          userId: global.user_id,
-        },
+        id,
+        userId: global.user_id,
       },
       select: { title: true, isCompleted: true, id: true },
     });
@@ -143,10 +139,8 @@ const show = async (req, res, next) => {
   try {
     const task = await prisma.task.findUnique({
       where: {
-        id_userId: {
-          id,
-          userId: global.user_id,
-        },
+        id,
+        userId: global.user_id,
       },
       select: { id: true, title: true, isCompleted: true },
     });
