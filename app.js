@@ -1,7 +1,6 @@
 const express = require("express");
 const app = express();
 const authMiddleware = require("./middleware/auth");
-const pool = require("./db/pg-pool");
 const prisma = require("/db/prisma");
 
 const taskRouter = require("./routers/taskRoutes");
