@@ -31,7 +31,7 @@ const create = async (req, res, next) => {
         isCompleted: value.is_completed ?? false,
         userId: global.user_id,
       },
-      select: { id: true, title: true, isCompleted: true, priority: true }, //defaults to medium priority 
+      select: { id: true, title: true, isCompleted: true, priority: true }, //defaults to medium priority
     });
     res.status(StatusCodes.CREATED).json(task);
   } catch (err) {
@@ -55,7 +55,7 @@ const deleteTask = async (req, res, next) => {
         id,
         userId: global.user_id,
       },
-      select: { id: true, title: true, isCompleted: true, priority: true},
+      select: { id: true, title: true, isCompleted: true, priority: true },
     });
 
     return res.status(StatusCodes.OK).json(deletedTask);
@@ -71,23 +71,59 @@ const deleteTask = async (req, res, next) => {
 
 //////////////////////INDEX/////////////////////////////
 const index = async (req, res, next) => {
-  //===> Removed the filter function to findIndex ---> to search the database
-  try {
-    const tasks = await prisma.task.findMany({
-      where: {
-        userId: global.user_id,
-      },
-      select: { title: true, isCompleted: true, id: true, priority: true},
-    });
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+  const whereClause = { userId: global.user_id}
 
-    if (tasks.length === 0) {
-      return res.status(StatusCodes.NOT_FOUND).json({ message: "Not Found" });
+  if(req.query.find){
+    whereClause.title = {
+      contains: req.query.find,
+      mode: 'insensitive'
     }
-
-    res.status(StatusCodes.OK).json(tasks);
-  } catch (err) {
-    next(err);
   }
+
+  //Get tasks with pagination parameters
+  const tasks = await prisma.task.findMany({
+    where: whereClause,
+    select: {
+      id: true,
+      title: true,
+      isCompleted: true,
+      priority: true,
+      createdAt: true,
+      User: {
+        select: {
+          name: true,
+          email: true,
+        },
+      },
+    },
+    skip: skip,
+    take: limit,
+    orderBy: { createdAt: "desc" },
+  });
+
+  //Get total count for pagination metaData
+  const totalTasks = await prisma.task.count({
+    where: whereClause,
+  });
+
+  //Build pagination object with complete metatDAta
+  const pagination = {
+    page,
+    limit,
+    total: totalTasks,
+    pages: Math.ceil(totalTasks / limit),
+    hasNext: page * limit < totalTasks,
+    hasPrev: page > 1,
+  };
+
+  if (tasks.length === 0) {
+    return res.status(StatusCodes.NOT_FOUND).json({ message: "Not Found" });
+  }
+
+  res.status(StatusCodes.OK).json(tasks, pagination);
 };
 
 //////////////////////////////Update/////////////////
@@ -155,6 +191,7 @@ const show = async (req, res, next) => {
     next(err);
   }
 };
+
 module.exports = {
   create,
   index,
