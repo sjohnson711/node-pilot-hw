@@ -31,7 +31,7 @@ const create = async (req, res, next) => {
         isCompleted: value.is_completed ?? false,
         userId: global.user_id,
       },
-      select: { id: true, title: true, isCompleted: true },
+      select: { id: true, title: true, isCompleted: true, priority: true }, //defaults to medium priority 
     });
     res.status(StatusCodes.CREATED).json(task);
   } catch (err) {
@@ -55,7 +55,7 @@ const deleteTask = async (req, res, next) => {
         id,
         userId: global.user_id,
       },
-      select: { id: true, title: true, isCompleted: true },
+      select: { id: true, title: true, isCompleted: true, priority: true},
     });
 
     return res.status(StatusCodes.OK).json(deletedTask);
@@ -77,7 +77,7 @@ const index = async (req, res, next) => {
       where: {
         userId: global.user_id,
       },
-      select: { title: true, isCompleted: true, id: true },
+      select: { title: true, isCompleted: true, id: true, priority: true},
     });
 
     if (tasks.length === 0) {
@@ -113,7 +113,7 @@ const update = async (req, res, next) => {
         id,
         userId: global.user_id,
       },
-      select: { title: true, isCompleted: true, id: true },
+      select: { title: true, isCompleted: true, id: true, priority: true },
     });
 
     return res.status(StatusCodes.OK).json(task);
@@ -142,7 +142,7 @@ const show = async (req, res, next) => {
         id,
         userId: global.user_id,
       },
-      select: { id: true, title: true, isCompleted: true },
+      select: { id: true, title: true, isCompleted: true, priority: true },
     });
 
     if (!task) {
