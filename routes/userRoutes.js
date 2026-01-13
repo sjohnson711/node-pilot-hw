@@ -3,11 +3,11 @@ const express = require("express");
 const router = express.Router(); //=====> creating the routes
 
 const { register } = require("../controllers/userController");
-const { userLogon, userLogoff } = require("../controllers/userController");
+const { logon, logoff } = require("../controllers/userController");
 
-router.post("/", register);
-router.post("/logon", userLogon);
-router.post("/logoff", userLogoff);
+router.post("/register", register);
+router.post("/logon", logon);
+router.post("/logoff", logoff);
 
 module.exports = router;
-//used to route to the correct urls
+// used to route to the correct urls

@@ -46,7 +46,7 @@ app.use(errorHandler);
 //health check added here
 app.get("/health", async (req, res) => {
   try {
-    await prisma.queryRaw`SELECT * WHERE id = ${id}`;
+    await prisma.$queryRaw`SELECT * WHERE id = ${id}`;
     res.json({ status: "ok", db: "connected" });
   } catch (err) {
     res
@@ -70,13 +70,13 @@ async function shutdown(code = 0) {
   if (isShuttingDown) return;
   isShuttingDown = true;
   console.log("Shutting down gracefully...");
-  await prisma.$disconnect(); // shuts down prisma
+  
   console.log("Prisma disconnected");
   try {
     await new Promise((resolve) => server.close(resolve));
     console.log("HTTP server closed.");
     // If you have DB connections, close them here
-    await pool.end();
+    await prisma.$disconnect(); // shuts down prisma
   } catch (err) {
     console.error("Error during shutdown:", err);
     code = 1;
