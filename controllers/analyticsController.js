@@ -1,10 +1,10 @@
 const prisma = require("../db/prisma");
 const { StatusCodes } = require("http-status-codes");
 
-exports.getAllUserAnalytics = async (req, res) => {
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10;
-  const skip = (page - 1) * limit;
+exports.getUsersWithStats = async (req, res) => {
+  let page = parseInt(req.query.page) || 1;
+  let limit = parseInt(req.query.limit) || 10;
+  let skip = (page - 1) * limit;
 
   //userTask counts
   const usersRaw = await prisma.user.findMany({
@@ -52,6 +52,15 @@ exports.getAllUserAnalytics = async (req, res) => {
 };
 
 exports.getUserAnalytics = async (req, res) => {
+  let page = parseInt(req.query.page) || 1;
+  let limit = parseInt(req.query.limit) || 10;
+
+  if (page < 1) page = 1;
+  if (limit < 1) limit = 1;
+  if (limit < 100) limit = 100;
+
+  const skip = (page -1) * limit
+
   const userId = parseInt(req.params.id);
   if (isNaN(userId)) {
     return res
@@ -62,6 +71,13 @@ exports.getUserAnalytics = async (req, res) => {
   //Check if user exist
   const user = await prisma.user.findUnique({
     where: { id: userId },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      createdAt: true
+      
+    }
   });
 
   if (!user) {
@@ -120,9 +136,8 @@ exports.getUserAnalytics = async (req, res) => {
     .json({ taskStats, recentTasks, weeklyProgress });
 };
 
-exports.gettask = async (req, res) => {
+exports.searchTasks = async (req, res) => {
   const searchQuery = req.query.q;
-
 
   if (!searchQuery || searchQuery.trim().length < 2) {
     return res
@@ -130,15 +145,14 @@ exports.gettask = async (req, res) => {
       .json({ error: "Search query must be at least 2 characters long" });
   }
 
+  const limit = req.query.limit || 20; //default to 20
 
-const limit = (req.query.limit) || 20; //default to 20
+  const searchPattern = `%${searchQuery}%`;
+  const exactMatch = searchQuery;
+  const startsWith = `${searchQuery}%`;
 
-const searchPattern = `%${searchQuery}%`
-const exactMatch = searchQuery;
-const startsWith = `${searchQuery}%`
-
-//use raw sql for the complex text search with parameterized queries
-const searchResults = await prisma.$queryRaw`
+  //use raw sql for the complex text search with parameterized queries
+  const searchResults = await prisma.$queryRaw`
   SELECT
     t.id,
     t.title,
@@ -162,12 +176,12 @@ const searchResults = await prisma.$queryRaw`
   LIMIT ${parseInt(limit)}
 `;
 
-//Return results with query and count
-return res
-  .status(StatusCodes.OK)
-  .json({result: searchResults, query: 
-    searchQuery, count: 
-    searchResults.length })
-}
-
-
+  //Return results with query and count
+  return res
+    .status(StatusCodes.OK)
+    .json({
+      results: searchResults,
+      query: searchQuery,
+      count: searchResults.length,
+    });
+};

@@ -36,7 +36,7 @@ const register = async (req, res, next) => {
   const hashedPassword = await hashPassword(password);
 
   try {
-    const result = prisma.$transaction(async (req, res) => {
+    const result = await prisma.$transaction(async (tx)=> {
       //create user account
       const newUser = await tx.user.create({
         data: {name, email, hashedPassword},
@@ -68,16 +68,17 @@ const register = async (req, res, next) => {
     });
     return { user: newUser, welcomeTasks}
   });
-  global.user.id = result.user.id
+  global.user_id = result.user.id
 
   res.status(201);
   res.json({
     user: result.user,
-    welcomeTasks: result.welcomeTaskData,
+    welcomeTasks: result.welcomeTasks,
     transactionStatus: "success",
   });
   return;
 }catch(err){
+  console.error('Register Error:', err)
   if(err.code === 'P2002'){
     return res
       .status(400)
@@ -131,4 +132,4 @@ const logoff = (req, res) => {
   return res.status(200).json({ message: "logged off" });
 };
 
-module.exports = { register, logon, logoff };
+module.exports = { register, login: logon, logoff };

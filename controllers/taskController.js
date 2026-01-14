@@ -30,6 +30,7 @@ const create = async (req, res, next) => {
         title: value.title,
         isCompleted: value.is_completed ?? false,
         userId: global.user_id,
+        priority: value.priority
       },
       select: { id: true, title: true, isCompleted: true, priority: true }, //defaults to medium priority
     });
@@ -52,9 +53,10 @@ const deleteTask = async (req, res, next) => {
   try {
     const deletedTask = await prisma.task.delete({
       where: {
-        id,
+        id: id,
         userId: global.user_id,
       },
+      
       select: { id: true, title: true, isCompleted: true, priority: true },
     });
 
@@ -64,8 +66,10 @@ const deleteTask = async (req, res, next) => {
       return res
         .status(StatusCodes.NOT_FOUND)
         .json({ message: "That task was not found " });
+    }else{
+      return next(err);
     }
-    return next(err);
+    
   }
 };
 
@@ -123,7 +127,7 @@ const index = async (req, res, next) => {
     return res.status(StatusCodes.NOT_FOUND).json({ message: "Not Found" });
   }
 
-  res.status(StatusCodes.OK).json(tasks, pagination);
+  res.status(StatusCodes.OK).json({tasks, pagination});
 };
 
 //////////////////////////////Update/////////////////
@@ -144,14 +148,15 @@ const update = async (req, res, next) => {
 
   try {
     const task = await prisma.task.update({
-      data: value,
+    
       where: {
-        id,
+        id: id,
         userId: global.user_id,
+       
       },
+      data: value,
       select: { title: true, isCompleted: true, id: true, priority: true },
     });
-
     return res.status(StatusCodes.OK).json(task);
   } catch (err) {
     if (err.code === "P2025") {
@@ -175,10 +180,15 @@ const show = async (req, res, next) => {
   try {
     const task = await prisma.task.findUnique({
       where: {
-        id,
+        id: id,
         userId: global.user_id,
       },
-      select: { id: true, title: true, isCompleted: true, priority: true },
+      select: { id: true, title: true, isCompleted: true, priority: true, User:{
+        select: {
+          name: true,
+          email: true
+        }
+      }},
     });
 
     if (!task) {
@@ -193,7 +203,7 @@ const show = async (req, res, next) => {
 };
 
 // Bulk create with validation
-exports.bulkCreate = async (req, res, next) => {
+const bulkCreate = async (req, res, next) => {
   const { tasks } = req.body;
 
   // Validate the tasks array
@@ -244,4 +254,5 @@ module.exports = {
   update,
   deleteTask,
   show,
+  bulkCreate
 };
