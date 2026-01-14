@@ -38,14 +38,14 @@ exports.getAllUserAnalytics = async (req, res) => {
   //Get total count for pagination
   const totalUsers = await prisma.user.count();
 
-  const totalPages = Math.ceil(totalUsers/limit)
+  const totalPages = Math.ceil(totalUsers / limit);
 
   const pagination = {
     page,
     limit,
     total: totalUsers,
     pages: totalPages,
-    hasNext: page  < totalPages,
+    hasNext: page < totalPages,
     hasPrev: page > 1,
   };
   return res.status(StatusCodes.OK).json({ users, pagination });
@@ -108,8 +108,8 @@ exports.getUserAnalytics = async (req, res) => {
   const weeklyProgress = await prisma.task.groupBy({
     by: ["createdAt"], //stacking the tasks into piles based on the day they were created.
     where: {
-      userId,//
-      createdAt: { gte: oneWeekAgo },//filtering the task from the last 7 days.
+      userId, //
+      createdAt: { gte: oneWeekAgo }, //filtering the task from the last 7 days.
     },
     _count: { id: true }, //how many are in each pile.
   });
@@ -120,5 +120,54 @@ exports.getUserAnalytics = async (req, res) => {
     .json({ taskStats, recentTasks, weeklyProgress });
 };
 
+exports.gettask = async (req, res) => {
+  const searchQuery = req.query.q;
+
+
+  if (!searchQuery || searchQuery.trim().length < 2) {
+    return res
+      .status(StatusCodes.BAD_REQUEST)
+      .json({ error: "Search query must be at least 2 characters long" });
+  }
+
+
+const limit = (req.query.limit) || 20; //default to 20
+
+const searchPattern = `%${searchQuery}%`
+const exactMatch = searchQuery;
+const startsWith = `${searchQuery}%`
+
+//use raw sql for the complex text search with parameterized queries
+const searchResults = await prisma.$queryRaw`
+  SELECT
+    t.id,
+    t.title,
+    t.is_completed as "isCompleted",
+    t.priority,
+    t.created_at as "createdAt",
+    t.user_id as "userId",
+    u.name as "user_name"
+  FROM tasks t
+  JOIN users u ON t.user_id = u.id
+  WHERE t.title ILIKE ${searchPattern} 
+     OR u.name ILIKE ${searchPattern}
+  ORDER BY 
+    CASE 
+      WHEN t.title ILIKE ${exactMatch} THEN 1
+      WHEN t.title ILIKE ${startsWith} THEN 2
+      WHEN t.title ILIKE ${searchPattern} THEN 3
+      ELSE 4
+    END,
+    t.created_at DESC
+  LIMIT ${parseInt(limit)}
+`;
+
+//Return results with query and count
+return res
+  .status(StatusCodes.OK)
+  .json({result: searchResults, query: 
+    searchQuery, count: 
+    searchResults.length })
+}
 
 

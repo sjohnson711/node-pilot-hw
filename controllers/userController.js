@@ -35,30 +35,60 @@ const register = async (req, res, next) => {
   const { name, email, password } = value;
   const hashedPassword = await hashPassword(password);
 
-  let user = null;
-
   try {
-    user = await prisma.user.create({
-      data: {
-        name,
-        email,
-        hashedPassword: hashedPassword, // Matches schema camelCase
-      },
-      select: { name: true, email: true, id: true },
-    });
-  } catch (err) {
-    if (err.name === "PrismaClientKnownRequestError" && err.code === "P2002") {
-      return res
-        .status(StatusCodes.BAD_REQUEST)
-        .json({ message: "User already exists " });
-    } else {
-      return next(err);
-    }
-  }
+    const result = prisma.$transaction(async (req, res) => {
+      //create user account
+      const newUser = await tx.user.create({
+        data: {name, email, hashedPassword},
+        select: {id: true, email: true, name: true}
 
-  global.user_id = user.id;
-  return res.status(StatusCodes.CREATED).json(user);
-};
+      });
+      //create 3 welcome tasks using createMany
+      const welcomeTaskData = [
+        { title: "Complete your profile", userId: newUser.id, priority: 'medium'},
+        { title: "Add your first task", userId: newUser.id, priority: "high"},
+        { title: "Explore the app", userId: newUser.id, priority: "low"}
+      ];
+      await tx.task.createMany({data: welcomeTaskData })
+    
+
+    //Fetch the created tasks to return them
+    const welcomeTasks = await tx.task.findMany({
+      where: {
+        userId: newUser.id,
+        title: { in: welcomeTaskData.map(t => t.title)}
+      },
+      select: {
+        id: true,
+        title: true, 
+        isCompleted: true,
+        userId: true, 
+        priority: true
+      }
+    });
+    return { user: newUser, welcomeTasks}
+  });
+  global.user.id = result.user.id
+
+  res.status(201);
+  res.json({
+    user: result.user,
+    welcomeTasks: result.welcomeTaskData,
+    transactionStatus: "success",
+  });
+  return;
+}catch(err){
+  if(err.code === 'P2002'){
+    return res
+      .status(400)
+      .json({ message: "Email already registered"})
+  }else{
+    return next(err)
+  }
+}
+}
+  
+
 
 // LOGON
 const logon = async (req, res) => {
