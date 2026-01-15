@@ -2,8 +2,7 @@ require("dotenv").config();
 const { StatusCodes } = require("http-status-codes");
 const { taskSchema, patchTaskSchema } = require("../validation/taskSchema");
 
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
+const prisma = require("../db/prisma");
 
 //Going to create all the request handler functions in this file such as create, index, show, update, deleteTask
 

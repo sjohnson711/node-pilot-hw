@@ -2,8 +2,7 @@ require("dotenv").config();
 const { StatusCodes } = require("http-status-codes");
 const crypto = require("crypto");
 const util = require("util");
-const { PrismaClient } = require("@prisma/client");
-const prisma = new PrismaClient();
+const prisma = require("../db/prisma");
 const scrypt = util.promisify(crypto.scrypt);
 const { userSchema } = require("../validation/userSchema");
 
@@ -34,6 +33,7 @@ const register = async (req, res, next) => {
 
   const { name, email, password } = value;
   const hashedPassword = await hashPassword(password);
+  delete value.password;
 
   try {
     const result = await prisma.$transaction(async (tx)=> {
@@ -78,7 +78,6 @@ const register = async (req, res, next) => {
   });
   return;
 }catch(err){
-  console.error('Register Error:', err)
   if(err.code === 'P2002'){
     return res
       .status(400)
@@ -132,4 +131,4 @@ const logoff = (req, res) => {
   return res.status(200).json({ message: "logged off" });
 };
 
-module.exports = { register, login: logon, logoff };
+module.exports = { register, logon, logoff };
