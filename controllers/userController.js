@@ -129,4 +129,4 @@ const logoff = (req, res) => {
   return res.status(200).json({ message: "logged off" });
 };
 
-module.exports = { register, login: logon, logoff };
+module.exports = { register,  logon, logoff };
