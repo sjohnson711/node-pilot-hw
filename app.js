@@ -1,5 +1,6 @@
 const express = require("express");
 const app = express();
+app.use(express.json({ limit: "1kb" })); //parsing the body of the request json
 const authMiddleware = require("./middleware/auth");
 const prisma = require("./db/prisma");
 const analyticsRoutes = require('./routes/analyticsRoutes')
@@ -19,18 +20,15 @@ const middleFunction = (req, res, next) => {
 };
 
 app.use(middleFunction);
-app.use('/api/analyics', authMiddleware, analyticsRoutes)
+app.use('/api/analytics', authMiddleware, analyticsRoutes)
 
-app.use(express.json({ limit: "1kb" })); //parsing the body of the request json
+
 
 app.get("/", (req, res) => {
   res.json({ message: "hello" });
 });
 
-const port = process.env.PORT || 3000;
-const server = app.listen(port, () =>
-  console.log(`Server is listening on port ${port}...`)
-);
+
 
 const userRouter = require("./routes/userRoutes.js");
 app.use("/api/users", userRouter);
@@ -45,10 +43,15 @@ const errorHandler = require("./middleware/error-handler");
 
 app.use(errorHandler);
 
+const port = process.env.PORT || 3000;
+const server = app.listen(port, () =>
+  console.log(`Server is listening on port ${port}...`)
+);
+
 //health check added here
 app.get("/health", async (req, res) => {
   try {
-    await prisma.$queryRaw`SELECT * WHERE id = ${id}`;
+    await prisma.$queryRaw`SELECT 1`;
     res.json({ status: "ok", db: "connected" });
   } catch (err) {
     res
@@ -73,12 +76,13 @@ async function shutdown(code = 0) {
   isShuttingDown = true;
   console.log("Shutting down gracefully...");
   
-  console.log("Prisma disconnected");
+
   try {
     await new Promise((resolve) => server.close(resolve));
     console.log("HTTP server closed.");
     // If you have DB connections, close them here
     await prisma.$disconnect(); // shuts down prisma
+    console.log("Prisma disconnected");
   } catch (err) {
     console.error("Error during shutdown:", err);
     code = 1;
