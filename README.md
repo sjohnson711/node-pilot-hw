@@ -296,6 +296,30 @@ git checkout -b assignment2
 - `package.json`: Single package file for the whole project.
 - The repository is structured for cloud deployment.
 
+
+// routes/taskRoutes.js
+const express = require("express");
+const router = express.Router();
+const {
+  bulkCreate,
+  index,
+  show,
+  create,
+  update,
+  deleteTask
+  
+} = require("../controllers/taskController");
+
+router.post("/:id", bulkCreate)
+router.get("/", index);
+router.get("/:id", show);
+router.post("/", create);
+router.patch("/:id", update);
+router.delete("/:id", deleteTask);
+
+
+module.exports = router;
+
 ## Good Luck With the Class, and Happy Coding!
 
 ## License
