@@ -9,7 +9,7 @@ const {
   update,
   deleteTask,
 } = require("../controllers/taskController");
-router.post("/:id", bulkCreate);
+router.post("/bulk", bulkCreate);
 router.get("/", index);
 router.get("/:id", show);
 router.post("/", create);
