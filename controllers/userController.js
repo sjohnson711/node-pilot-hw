@@ -33,7 +33,7 @@ const register = async (req, res, next) => {
 
   const { name, email, password } = value;
   const hashedPassword = await hashPassword(password);
-  delete value.hashedPassword
+  delete value.password
 
   try {
     const result = await prisma.$transaction(async (tx) => {
