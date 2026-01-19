@@ -157,11 +157,11 @@ const logon = async (req, res) => {
     return payload.csrfToken; //thhis is needed in the body returned by logon() and register()
   }
 
-  global.user_id = user.id;
 
   return res.status(StatusCodes.OK).json({
     name: user.name,
     email: user.email,
+    setJwtCookie
   });
 };
 
@@ -172,4 +172,4 @@ const logoff = (req, res) => {
   return res.status(200).json({ message: "logged off" });
 };
 
-module.exports = { register,  logon, logoff, setJwtCookie };
+module.exports = { register,  logon, logoff };
