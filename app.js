@@ -1,16 +1,15 @@
 const express = require("express");
 const app = express();
 app.use(express.json({ limit: "1kb" })); //parsing the body of the request json
-const authMiddleware = require("./middleware/auth");
+const jwtMiddleware = require("./middleware/jwtMiddleware");
 const prisma = require("./db/prisma");
 const analyticsRoutes = require('./routes/analyticsRoutes')
+const cookieParser = require("cookie-parser");
+app.use(cookieParser())
 
 const taskRouter = require("./routes/taskRoutes");
-app.use("/api/tasks", authMiddleware, taskRouter); // -----> Auth get called so that if the user is not loggeeon they cannot access the tasks.
+app.use("/api/tasks", jwtMiddleware, taskRouter); // -----> Auth get called so that if the user is not loggeeon they cannot access the tasks.
 
-global.user_id = null;
-global.users = []; //-------> Array of objects of users
-global.tasks = []; //-------> using this in my taskController.js
 
 const middleFunction = (req, res, next) => {
   console.log(
