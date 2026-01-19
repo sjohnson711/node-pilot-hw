@@ -5,6 +5,8 @@ const util = require("util");
 const prisma = require("../db/prisma");
 const scrypt = util.promisify(crypto.scrypt);
 const { userSchema } = require("../validation/userSchema");
+const { randomUUID } = require("crypto");
+const jwt = require("jwtwebtoken")
 
 async function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString("hex");
@@ -34,6 +36,24 @@ const register = async (req, res, next) => {
   const { name, email, password } = value;
   const hashedPassword = await hashPassword(password);
   delete value.password
+
+    //create the JWT and sit it in a cookie and return the result to the caller
+  const cookieFlags = (req) => {
+    return {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", //only when HTTPS is available
+      sameSite: "Strict"
+    };
+  };
+    
+    const setJwtCookie = (req, res, user) => {
+      //sign JWT
+      const payload = { id: user.id, csrfToken: randomUUID()}
+      const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h"}); //1 hour expiration
+      // set cookie. Note that the cookie flags have to be different in production and in test
+      res.cookie("jwt", token, { ...cookieFlags(req), maxAge: 3600000 }); //1hr experation
+      return payload.csrfToken; //thhis is needed in the body returned by logon() and register()
+    }
 
   try {
     const result = await prisma.$transaction(async (tx) => {
@@ -88,6 +108,8 @@ const register = async (req, res, next) => {
   }
 };
 
+
+
 // LOGON
 const logon = async (req, res) => {
   if (!req.body || !req.body.email || !req.body.password) {
@@ -98,6 +120,8 @@ const logon = async (req, res) => {
 
   let { email, password } = req.body;
   email = email.toLowerCase();
+
+ 
 
   const user = await prisma.user.findUnique({ where: { email } });
 
@@ -115,6 +139,24 @@ const logon = async (req, res) => {
       .json({ message: "Authentication Failed" });
   }
 
+   //create the JWT and sit it in a cookie and return the result to the caller
+   const cookieFlags = (req) => {
+    return {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", //only when HTTPS is available
+      sameSite: "Strict"
+    };
+  };
+  
+  const setJwtCookie = (req, res, user) => {
+    //sign JWT
+    const payload = { id: user.id, csrfToken: randomUUID()}
+    const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "1h"}); //1 hour expiration
+    // set cookie. Note that the cookie flags have to be different in production and in test
+    res.cookie("jwt", token, { ...cookieFlags(req), maxAge: 3600000 }); //1hr experation
+    return payload.csrfToken; //thhis is needed in the body returned by logon() and register()
+  }
+
   global.user_id = user.id;
 
   return res.status(StatusCodes.OK).json({
@@ -126,6 +168,7 @@ const logon = async (req, res) => {
 // LOGOFF
 const logoff = (req, res) => {
   global.user_id = null;
+  res.clearCookie("jwt", cookieFlags(req))
   return res.status(200).json({ message: "logged off" });
 };
 
