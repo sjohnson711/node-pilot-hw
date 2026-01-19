@@ -88,7 +88,7 @@ const register = async (req, res, next) => {
           priority: true,
         },
       });
-      return { user: newUser, welcomeTasks };
+      return { user: newUser, welcomeTasks, setJwtCookie };
     });
     global.user_id = result.user.id;
 
@@ -172,4 +172,4 @@ const logoff = (req, res) => {
   return res.status(200).json({ message: "logged off" });
 };
 
-module.exports = { register,  logon, logoff };
+module.exports = { register,  logon, logoff, setJwtCookie };
