@@ -25,11 +25,13 @@ module.exports = async (req, res, next) => {
 
         if (['POST', 'PATCH', 'PUT', 'DELETE', 'CONNECT'].includes(req.method)) {
             //for these operations we have to check for cross site request forgery
-            if(req.get("X-CSFR-TOKEN") != decoded.csrf.token){
+            if(req.get("X-CSRF-TOKEN") != decoded.csrfToken){
                 return send401(res);
             
             }
+            
         }
         next(); //if the token is good
+        
     })
 }
