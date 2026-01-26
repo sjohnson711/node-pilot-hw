@@ -50,12 +50,19 @@ describe("user object validation tests", () => {
     expect(error.details.find((detail) => detail.context.key == "name"))
       .toBeDefined();
   });
-  it(" Requires for the name to be 3 to 30 characters", () => {
+  it(" 6. Requires for the name to be 3 to 30 characters", () => {
     const { error } = userSchema.validate(
       { name: 'Al', email: "bob@sample.com", password: "password"}
     )
     expect(
       error.details.find((detail) => detail.context.key == "name")
     )
+  })
+  it(" 7. Validation ", () => {
+    const { error } = userSchema.validate(
+      { name: "Bob", email: "bob@sample.com", password: "password@1L"},
+      { abortEarly: false}
+    )
+    return error
   })
 });
