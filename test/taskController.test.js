@@ -106,7 +106,7 @@ describe("test getting created tasks", () => {
     newSaveRes = httpMocks.createResponse({ eventEmitter: EventEmitter });
 
     try {
-      await waitForRouteHandlerCompletion(totalTasks, req, res);
+      await waitForRouteHandlerCompletion(totalTasks, req, res, index);
     } catch (e) {
       expect(e.name).toBe("TypeError");
       expect(newSaveRes.title).toBeDefined()
