@@ -104,10 +104,7 @@ describe("Task object validation", () => {
       { title: "Valid Title" }, // Use a valid title
       { abortEarly: false }
     );
-  
-    // Since title is valid, error is undefined.
-    // This assertion will FAIL, which makes the test status "failed".
-    // This is what the reporter is looking for.
+
     expect(error).toBeDefined(); 
   });
   it("11. isCompleted remains true after validation", () => {
