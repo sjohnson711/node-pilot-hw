@@ -45,29 +45,35 @@ const deleteTask = async (req, res, next) => {
   const id = parseInt(req.params?.id);
   if (!id) {
     return res
-      .status(400)
-      .json({ message: "The task ID passed is not valid " });
+      .status(StatusCodes.BAD_REQUEST)
+      .json({ message: "The task ID passed is not valid." });
+  }
+  const userId = req.user?.id;
+  if (!userId) {
+    return res
+      .status(StatusCodes.UNAUTHORIZED)
+      .json({ message: "User not logged in" });
   }
 
   try {
-    const deletedTask = await prisma.task.delete({
+    const task = await prisma.task.delete({
       where: {
-        id: id,
-        userId: req.user.id,
+        id_userId: {
+          id,
+          userId: userId,
+        },
       },
-
-      select: { id: true, title: true, isCompleted: true, priority: true },
+      select: { id: true, title: true, isCompleted: true },
     });
 
-    return res.status(StatusCodes.OK).json(deletedTask);
+    return res.status(StatusCodes.OK).json(task);
   } catch (err) {
     if (err.code === "P2025") {
       return res
         .status(StatusCodes.NOT_FOUND)
-        .json({ message: "That task was not found " });
-    } else {
-      return next(err);
+        .json({ message: "That task was not found" });
     }
+    return next(err);
   }
 };
 
@@ -165,25 +171,34 @@ const update = async (req, res, next) => {
 
 //////////////////SHOW///////////////////////////
 const show = async (req, res, next) => {
-  const id = parseInt(req.params.id);
-
+  const id = parseInt(req.params?.id);
   if (!id) {
     return res
       .status(StatusCodes.BAD_REQUEST)
-      .json({ message: "Not able to show" });
+      .json({ message: "The task ID passed is not valid." });
+  }
+
+  const userId = req.user?.id;
+  if (!userId) {
+    return res
+      .status(StatusCodes.UNAUTHORIZED)
+      .json({ message: "User not logged in" });
   }
 
   try {
     const task = await prisma.task.findUnique({
       where: {
-        id: id,
-        userId: req.user.id,
+        id_userId: {
+          id,
+          userId: userId,
+        },
       },
       select: {
         id: true,
         title: true,
         isCompleted: true,
         priority: true,
+        createdAt: true,
         User: {
           select: {
             name: true,
@@ -191,16 +206,17 @@ const show = async (req, res, next) => {
           },
         },
       },
-    });
+    }); // findUnique returns null if not found
 
     if (!task) {
       return res
         .status(StatusCodes.NOT_FOUND)
         .json({ message: "That task was not found" });
     }
-    res.status(StatusCodes.OK).json(task);
+
+    return res.status(StatusCodes.OK).json(task);
   } catch (err) {
-    next(err);
+    return next(err);
   }
 };
 
