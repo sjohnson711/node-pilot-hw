@@ -5,7 +5,7 @@ const router = express.Router(); //=====> creating the routes
 const { register } = require("../controllers/userController");
 const { logon, logoff } = require("../controllers/userController");
 
-router.post("/register", register);
+router.post("/", register);
 router.post("/logon", logon);
 router.post("/logoff", logoff);
 
