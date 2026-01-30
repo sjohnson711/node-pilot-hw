@@ -8,7 +8,7 @@ const prisma = require("../db/prisma");
 
 /////////////////////////CREATE///////////////////////////
 const create = async (req, res, next) => {
-  if (!global.user_id) {
+  if (!req.user.id) {
     return res
       .status(StatusCodes.UNAUTHORIZED)
       .json({ message: "Not Logged in" });
@@ -28,7 +28,7 @@ const create = async (req, res, next) => {
       data: {
         title: value.title,
         isCompleted: value.is_completed ?? false,
-        userId: global.user_id,
+        userId: req.user.id,
         priority: value.priority,
       },
       select: { id: true, title: true, isCompleted: true, priority: true }, //defaults to medium priority
@@ -53,7 +53,7 @@ const deleteTask = async (req, res, next) => {
     const deletedTask = await prisma.task.delete({
       where: {
         id: id,
-        userId: global.user_id,
+        userId: req.user.id,
       },
 
       select: { id: true, title: true, isCompleted: true, priority: true },
@@ -76,7 +76,7 @@ const index = async (req, res, next) => {
   const page = parseInt(req.query.page) || 1;
   const limit = parseInt(req.query.limit) || 10;
   const skip = (page - 1) * limit;
-  const whereClause = { userId: global.user_id };
+  const whereClause = { userId: req.user.id };
 
   if (req.query.find) {
     whereClause.title = {
@@ -148,7 +148,7 @@ const update = async (req, res, next) => {
     const task = await prisma.task.update({
       where: {
         id: id,
-        userId: global.user_id,
+        userId: req.user.id,
       },
       data: value,
       select: { title: true, isCompleted: true, id: true, priority: true },
@@ -177,7 +177,7 @@ const show = async (req, res, next) => {
     const task = await prisma.task.findUnique({
       where: {
         id: id,
-        userId: global.user_id,
+        userId: req.user.id,
       },
       select: {
         id: true,
@@ -229,7 +229,7 @@ const bulkCreate = async (req, res, next) => {
       title: value.title,
       isCompleted: value.isCompleted || false,
       priority: value.priority || "medium",
-      userId: global.user_id,
+      userId: req.user.id,
     });
   }
 

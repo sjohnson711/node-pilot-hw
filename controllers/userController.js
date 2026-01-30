@@ -5,6 +5,8 @@ const util = require("util");
 const prisma = require("../db/prisma");
 const scrypt = util.promisify(crypto.scrypt);
 const { userSchema } = require("../validation/userSchema");
+const { randomUUID } = require("crypto");
+const jwt = require("jsonwebtoken");
 
 async function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString("hex");
@@ -31,15 +33,37 @@ const register = async (req, res, next) => {
       .json({ message: error.details[0].message });
   }
 
+  //create the JWT and sit it in a cookie and return the result to the caller
+  const cookieFlags = (req) => {
+    return {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", //only when HTTPS is available
+      sameSite: "Strict",
+    };
+  };
+
+  const setJwtCookie = (req, res, user) => {
+    //sign JWT
+    const payload = { id: user.id, csrfToken: randomUUID() };
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    }); //1 hour expiration
+    // set cookie. Note that the cookie flags have to be different in production and in test
+    res.cookie("jwt", token, { ...cookieFlags(req), maxAge: 3600000 }); //1hr experation
+    return payload.csrfToken; //thhis is needed in the body returned by logon() and register()
+  };
+
   const { name, email, password } = value;
   const hashedPassword = await hashPassword(password);
-  delete value.password
+  delete value.password;
 
   try {
     const result = await prisma.$transaction(async (tx) => {
       //create user account
+      
       const newUser = await tx.user.create({
-        data: { name, email, hashedPassword },
+        
+        data: { name, email, hashedPassword,  },
         select: { id: true, email: true, name: true },
       });
       //create 3 welcome tasks using createMany
@@ -48,6 +72,7 @@ const register = async (req, res, next) => {
           title: "Complete your profile",
           userId: newUser.id,
           priority: "medium",
+          
         },
         { title: "Add your first task", userId: newUser.id, priority: "high" },
         { title: "Explore the app", userId: newUser.id, priority: "low" },
@@ -68,15 +93,17 @@ const register = async (req, res, next) => {
           priority: true,
         },
       });
-      return { user: newUser, welcomeTasks };
+      const csrfToken = setJwtCookie(req, res, newUser)
+      return { user: newUser, welcomeTasks, csrfToken};
     });
-    global.user_id = result.user.id;
+
 
     res.status(201);
     res.json({
       user: result.user,
       welcomeTasks: result.welcomeTasks,
       transactionStatus: "success",
+      csrfToken: result.csrfToken
     });
     return;
   } catch (err) {
@@ -96,6 +123,8 @@ const logon = async (req, res) => {
       .json({ message: "Email and password are required" });
   }
 
+
+  
   let { email, password } = req.body;
   email = email.toLowerCase();
 
@@ -115,18 +144,39 @@ const logon = async (req, res) => {
       .json({ message: "Authentication Failed" });
   }
 
-  global.user_id = user.id;
+  //create the JWT and sit it in a cookie and return the result to the caller
+ 
 
+  const setJwtCookie = (req, res, user) => {
+    //sign JWT
+    const payload = { id: user.id, csrfToken: randomUUID() };
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    }); //1 hour expiration
+    // set cookie. Note that the cookie flags have to be different in production and in test
+    res.cookie("jwt", token, { ...cookieFlags(req), maxAge: 3600000 }); //1hr experation
+    return payload.csrfToken; //thhis is needed in the body returned by logon() and register()
+  };
+  const csrfToken = setJwtCookie(req, res, user)
   return res.status(StatusCodes.OK).json({
     name: user.name,
     email: user.email,
+    csrfToken: csrfToken
+    
   });
+};
+const cookieFlags = (req) => {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production", //only when HTTPS is available
+    sameSite: "Strict",
+  };
 };
 
 // LOGOFF
 const logoff = (req, res) => {
-  global.user_id = null;
+  res.clearCookie("jwt", cookieFlags(req));
   return res.status(200).json({ message: "logged off" });
 };
 
-module.exports = { register,  logon, logoff };
+module.exports = { register, logon, logoff };

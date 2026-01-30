@@ -1,16 +1,20 @@
 const express = require("express");
 const app = express();
 app.use(express.json({ limit: "1kb" })); //parsing the body of the request json
-const authMiddleware = require("./middleware/auth");
+const jwtMiddleware = require("./middleware/jwtMiddleware");
 const prisma = require("./db/prisma");
 const analyticsRoutes = require('./routes/analyticsRoutes')
+const cookieParser = require("cookie-parser");
+app.use(cookieParser())
+app.set("trust proxy", 1);
+const helmet = require("helmet");
+const { xss } = require("express-xss-sanitizer");
+const rateLimiter = require("express-rate-limit");
 
 const taskRouter = require("./routes/taskRoutes");
-app.use("/api/tasks", authMiddleware, taskRouter); // -----> Auth get called so that if the user is not loggeeon they cannot access the tasks.
-
-global.user_id = null;
-global.users = []; //-------> Array of objects of users
-global.tasks = []; //-------> using this in my taskController.js
+app.use("/api/tasks", jwtMiddleware, taskRouter); // -----> jwtMiddleware protects the routes
+app.use(helmet())
+app.use(xss())
 
 const middleFunction = (req, res, next) => {
   console.log(
@@ -20,9 +24,14 @@ const middleFunction = (req, res, next) => {
 };
 
 app.use(middleFunction);
-app.use('/api/analytics', authMiddleware, analyticsRoutes)
+app.use('/api/analytics', jwtMiddleware, analyticsRoutes)
 
-
+app.use(
+  rateLimiter({
+    windowMs: 15 * 60 * 1000,//15 minutes
+    max: 100, //limit each IP to 100 requests per window MS
+  })
+)
 
 app.get("/", (req, res) => {
   res.json({ message: "hello" });
