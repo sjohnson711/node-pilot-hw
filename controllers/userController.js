@@ -60,10 +60,9 @@ const register = async (req, res, next) => {
   try {
     const result = await prisma.$transaction(async (tx) => {
       //create user account
-      
+
       const newUser = await tx.user.create({
-        
-        data: { name, email, hashedPassword,  },
+        data: { name, email, hashedPassword },
         select: { id: true, email: true, name: true },
       });
       //create 3 welcome tasks using createMany
@@ -72,7 +71,6 @@ const register = async (req, res, next) => {
           title: "Complete your profile",
           userId: newUser.id,
           priority: "medium",
-          
         },
         { title: "Add your first task", userId: newUser.id, priority: "high" },
         { title: "Explore the app", userId: newUser.id, priority: "low" },
@@ -93,17 +91,16 @@ const register = async (req, res, next) => {
           priority: true,
         },
       });
-      const csrfToken = setJwtCookie(req, res, newUser)
-      return { user: newUser, welcomeTasks, csrfToken};
+      const csrfToken = setJwtCookie(req, res, newUser);
+      return { user: newUser, welcomeTasks, csrfToken };
     });
-
 
     res.status(201);
     res.json({
       user: result.user,
       welcomeTasks: result.welcomeTasks,
       transactionStatus: "success",
-      csrfToken: result.csrfToken
+      csrfToken: result.csrfToken,
     });
     return;
   } catch (err) {
@@ -123,8 +120,6 @@ const logon = async (req, res) => {
       .json({ message: "Email and password are required" });
   }
 
-
-  
   let { email, password } = req.body;
   email = email.toLowerCase();
 
@@ -145,7 +140,6 @@ const logon = async (req, res) => {
   }
 
   //create the JWT and sit it in a cookie and return the result to the caller
- 
 
   const setJwtCookie = (req, res, user) => {
     //sign JWT
@@ -157,12 +151,13 @@ const logon = async (req, res) => {
     res.cookie("jwt", token, { ...cookieFlags(req), maxAge: 3600000 }); //1hr experation
     return payload.csrfToken; //thhis is needed in the body returned by logon() and register()
   };
-  const csrfToken = setJwtCookie(req, res, user)
+  const csrfToken = setJwtCookie(req, res, user);
   return res.status(StatusCodes.OK).json({
-    name: user.name,
-    email: user.email,
-    csrfToken: csrfToken
-    
+    user: {
+      name: user.name,
+      email: user.email,
+    },
+    csrfToken: csrfToken,
   });
 };
 const cookieFlags = (req) => {
