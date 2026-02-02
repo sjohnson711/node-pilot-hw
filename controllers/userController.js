@@ -194,8 +194,9 @@ const logon = async (req, res) => {
     user: {
       name: user.name,
       email: user.email,
+      csrfToken,
     },
-    csrfToken: csrfToken,
+    
   });
 };
 const cookieFlags = (req) => {
