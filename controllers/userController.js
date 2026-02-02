@@ -201,7 +201,7 @@ const logon = async (req, res) => {
 const cookieFlags = (req) => {
   return {
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production", //only when HTTPS is available
+    secure: true,
     sameSite: isProd ? "None" : "Strict",
   };
 };
