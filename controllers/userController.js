@@ -161,7 +161,14 @@ const logon = async (req, res) => {
   let { email, password } = req.body;
   email = email.toLowerCase();
 
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findUnique({ where: { email },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      hashedPassword: true
+    }
+  });
 
   if (!user) {
     return res
@@ -194,6 +201,7 @@ const logon = async (req, res) => {
     user: {
       name: user.name,
       email: user.email,
+      
     },
     csrfToken: csrfToken,
   });
