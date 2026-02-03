@@ -42,7 +42,7 @@ const register = async (req, res, next) => {
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
-      },
+      }
     );
     const data = await response.json();
     if (data.success) isPerson = true;
@@ -87,9 +87,6 @@ const register = async (req, res, next) => {
     res.cookie("jwt", token, { ...cookieFlags(req), maxAge: 3600000 }); //1hr experation
     return payload.csrfToken; //thhis is needed in the body returned by logon() and register()
   };
-
-
-
 
   const { name, email, password } = value;
   const hashedPassword = await hashPassword(password);
@@ -161,14 +158,7 @@ const logon = async (req, res) => {
   let { email, password } = req.body;
   email = email.toLowerCase();
 
-  const user = await prisma.user.findUnique({ where: { email },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      hashedPassword: true
-    }
-  });
+  const user = await prisma.user.findUnique({ where: { email } });
 
   if (!user) {
     return res
@@ -201,7 +191,6 @@ const logon = async (req, res) => {
     user: {
       name: user.name,
       email: user.email,
-      
     },
     csrfToken: csrfToken,
   });
@@ -217,7 +206,7 @@ const cookieFlags = (req) => {
 // LOGOFF
 const logoff = (req, res) => {
   res.clearCookie("jwt", cookieFlags(req));
-  
+
   return res.status(200).json({ message: "logged off" });
 };
 
