@@ -188,10 +188,8 @@ const logon = async (req, res) => {
   };
   const csrfToken = setJwtCookie(req, res, user);
   return res.status(StatusCodes.OK).json({
-    user: {
-      name: user.name,
-      email: user.email,
-    },
+    name: user.name,
+    email: user.email,
     csrfToken: csrfToken,
   });
 };
