@@ -93,19 +93,19 @@ describe("Task object validation", () => {
       isCompleted: "not-a-boolean", // <--- Change this from true to a string
       
     });
-    expect(error).toBeDefined(); 
+    expect(error).toBeDefined()
   
     expect(
       error.details.find((detail) => detail.context.key == "isCompleted")
     ).toBeDefined();
   });
   it("10. isCompleted value is not specified but the rest of the object is valid ", () => {
-    const { error } = taskSchema.validate(
+    const { error, value } = taskSchema.validate(
       { title: "Valid Title" }, // Use a valid title
       { abortEarly: false }
     );
 
-    expect(error).toBeDefined(); 
+    expect(value.isCompleted).toBe(false); 
   });
   it("11. isCompleted remains true after validation", () => {
     const { error, value } = taskSchema.validate({

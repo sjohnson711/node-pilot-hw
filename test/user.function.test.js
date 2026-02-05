@@ -22,6 +22,7 @@ describe("register a user ", () => {
       name: "John Deere",
       email: "jdeere@example.com",
       password: "Pa$$word20",
+      
     };
     saveRes = await agent.post("/api/users").send(newUser);
     expect(saveRes.status).toBe(201);

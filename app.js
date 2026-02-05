@@ -1,6 +1,7 @@
 const express = require("express");
 const app = express();
-app.use(express.json({ limit: "1kb" })); //parsing the body of the request json
+app.use(express.json({ limit: "100kb" })); //parsing the body of the request json
+
 const jwtMiddleware = require("./middleware/jwtMiddleware");
 const prisma = require("./db/prisma");
 const analyticsRoutes = require('./routes/analyticsRoutes')

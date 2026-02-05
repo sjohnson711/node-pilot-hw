@@ -25,6 +25,41 @@ async function comparePassword(inputPassword, storedHash) {
 const register = async (req, res, next) => {
   if (!req.body) req.body = {};
 
+  //checking for the recaptcha
+  let isPerson = false;
+  if (req.body.recaptchaToken) {
+    const token = req.body.recaptchaToken;
+    const params = new URLSearchParams();
+    params.append("secret", process.env.RECAPTCHA_SECRET);
+    params.append("response", token);
+    params.append("remoteip", req.ip);
+    const response = await fetch(
+      // might throw an error that would cause a 500 from the error handler
+      "https://www.google.com/recaptcha/api/siteverify",
+      {
+        method: "POST",
+        body: params.toString(),
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      }
+    );
+    const data = await response.json();
+    if (data.success) isPerson = true;
+    delete req.body.recaptchaToken;
+  } else if (
+    process.env.RECAPTCHA_BYPASS &&
+    req.get("X-Recaptcha-Test") === process.env.RECAPTCHA_BYPASS
+  ) {
+    // might be a test environment
+    isPerson = true;
+  }
+  if (!isPerson) {
+    return res
+      .status(StatusCodes.BAD_REQUEST)
+      .json({ message: "We can't tell if you're a person or a bot." });
+  }
+
   const { value, error } = userSchema.validate(req.body, { abortEarly: false });
 
   if (error) {
@@ -153,10 +188,8 @@ const logon = async (req, res) => {
   };
   const csrfToken = setJwtCookie(req, res, user);
   return res.status(StatusCodes.OK).json({
-    user: {
-      name: user.name,
-      email: user.email,
-    },
+    name: user.name,
+    email: user.email,
     csrfToken: csrfToken,
   });
 };
@@ -171,6 +204,7 @@ const cookieFlags = (req) => {
 // LOGOFF
 const logoff = (req, res) => {
   res.clearCookie("jwt", cookieFlags(req));
+
   return res.status(200).json({ message: "logged off" });
 };
 
