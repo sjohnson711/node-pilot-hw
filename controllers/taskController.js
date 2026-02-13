@@ -1,6 +1,8 @@
 const { StatusCodes } = require("http-status-codes");
 const { taskSchema, patchTaskSchema } = require("../validation/taskSchema");
 const prisma = require("../db/prisma");
+
+//create
 const create = async (req, res) => {
   if (!req.body) req.body = {};
   const { error, value } = taskSchema.validate(req.body, {
@@ -20,23 +22,6 @@ const create = async (req, res) => {
     select: { id: true, title: true, isCompleted: true, priority: true }, // not returning userId
   });
   return res.status(StatusCodes.CREATED).json(task);
-  /*if (!userId) {
-      return next({status: StatusCodes.UNAUTHORIZED, message: "User not logged in" });
-    }
-    try {
-      const task = await prisma.task.create({
-        data: {
-          title: value.title,
-          isCompleted: value.isCompleted ?? false, // default to false if not provided
-          priority: value.priority ?? "medium",
-          userId,
-        },
-        select: { id: true, title: true, isCompleted: true, priority: true }, // not returning userId
-      });
-      return res.status(StatusCodes.CREATED).json(task);
-    } catch (err) {
-      return next(err);
-    }*/
 };
 const bulkCreate = async (req, res, next) => {
   const { tasks } = req.body;
