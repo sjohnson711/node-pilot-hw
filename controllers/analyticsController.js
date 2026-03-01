@@ -1,0 +1,187 @@
+const prisma = require("../db/prisma");
+const { StatusCodes } = require("http-status-codes");
+
+exports.getUsersWithStats = async (req, res) => {
+  let page = parseInt(req.query.page) || 1;
+  let limit = parseInt(req.query.limit) || 10;
+  let skip = (page - 1) * limit;
+
+  //userTask counts
+  const usersRaw = await prisma.user.findMany({
+    include: {
+      Task: {
+        where: { isCompleted: false },
+        select: { id: true },
+        take: 5,
+      },
+      _count: {
+        select: {
+          Task: true,
+        },
+      },
+    },
+    skip: skip,
+    take: limit,
+    orderBy: { createdAt: "desc" },
+  });
+
+  //Transform the result to clean up the structure
+  const users = usersRaw.map((user) => ({
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    createdAt: user.createdAt,
+    _count: user._count, //Includes ( Task )
+    Task: user.Task, //Includes array of task IDs
+  }));
+
+  //Get total count for pagination
+  const totalUsers = await prisma.user.count();
+
+  const totalPages = Math.ceil(totalUsers / limit);
+
+  const pagination = {
+    page,
+    limit,
+    total: totalUsers,
+    pages: totalPages,
+    hasNext: page < totalPages,
+    hasPrev: page > 1,
+  };
+  return res.status(StatusCodes.OK).json({ users, pagination });
+};
+
+exports.getUserAnalytics = async (req, res) => {
+  let page = parseInt(req.query.page) || 1;
+  let limit = parseInt(req.query.limit) || 10;
+
+  if (page < 1) page = 1;
+  if (limit < 1) limit = 1;
+  if (limit < 100) limit = 100;
+
+  const skip = (page -1) * limit
+
+  const userId = parseInt(req.params.id);
+  if (isNaN(userId)) {
+    return res
+      .status(StatusCodes.BAD_REQUEST)
+      .json({ message: "Invalid Id format" });
+  }
+
+  //Check if user exist
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      createdAt: true
+      
+    }
+  });
+
+  if (!user) {
+    return res
+      .status(StatusCodes.NOT_FOUND)
+      .json({ message: "User Not Found" });
+  }
+
+  //Use groupBy to count tasks by completion status
+  const taskStats = await prisma.task.groupBy({
+    by: ["isCompleted"],
+    where: { userId },
+    _count: {
+      id: true,
+    },
+  });
+
+  //Include recent task activity with eager loading
+  const recentTasks = await prisma.task.findMany({
+    where: { userId }, //only look for rows that belong to the user
+    select: {
+      id: true,
+      title: true,
+      isCompleted: true,
+      priority: true,
+      createdAt: true,
+      userId: true,
+      User: {
+        select: { name: true },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 10,
+  });
+
+  //Calculate weekly progress using groupBy
+  //first, calculate the date from one week ago
+  //hint, Use new Date() and setDate() - 7
+
+  const oneWeekAgo = new Date();
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+
+  //use groupBy with a where clause filtering by createdAt>= oneWeekAgo
+  const weeklyProgress = await prisma.task.groupBy({
+    by: ["createdAt"], //stacking the tasks into piles based on the day they were created.
+    where: {
+      userId, //
+      createdAt: { gte: oneWeekAgo }, //filtering the task from the last 7 days.
+    },
+    _count: { id: true }, //how many are in each pile.
+  });
+
+  //return response with taskStats, recentTasks, and weeklyProgress
+  return res
+    .status(StatusCodes.OK)
+    .json({ taskStats, recentTasks, weeklyProgress });
+};
+
+exports.searchTasks = async (req, res) => {
+  const searchQuery = req.query.q;
+
+  if (!searchQuery || searchQuery.trim().length < 2) {
+    return res
+      .status(StatusCodes.BAD_REQUEST)
+      .json({ error: "Search query must be at least 2 characters long" });
+  }
+
+  const limit = req.query.limit || 20; //default to 20
+
+  const searchPattern = `%${searchQuery}%`;
+  const exactMatch = searchQuery;
+  const startsWith = `${searchQuery}%`;
+
+  //use raw sql for the complex text search with parameterized queries
+  const searchResults = await prisma.$queryRaw`
+  SELECT
+    t.id,
+    t.title,
+    t.is_completed as "isCompleted",
+    t.priority,
+    t.created_at as "createdAt",
+    t.user_id as "userId",
+    u.name as "user_name"
+  FROM tasks t
+  JOIN users u ON t.user_id = u.id
+  WHERE t.title ILIKE ${searchPattern} 
+     OR u.name ILIKE ${searchPattern}
+  ORDER BY 
+    CASE 
+      WHEN t.title ILIKE ${exactMatch} THEN 1
+      WHEN t.title ILIKE ${startsWith} THEN 2
+      WHEN t.title ILIKE ${searchPattern} THEN 3
+      ELSE 4
+    END,
+    t.created_at DESC
+  LIMIT ${parseInt(limit)}
+`;
+
+  //Return results with query and count
+  return res
+    .status(StatusCodes.OK)
+    .json({
+      results: searchResults,
+      query: searchQuery,
+      count: searchResults.length,
+    });
+};

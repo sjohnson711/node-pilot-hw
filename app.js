@@ -1,16 +1,21 @@
 const express = require("express");
 const app = express();
-const authMiddleware = require('./middleware/auth')
-const pool = require("./db/pg-pool");
+app.use(express.json({ limit: "100kb" })); //parsing the body of the request json
 
-const taskRouter = require("./routers/taskRoutes")
-app.use("/api/tasks", authMiddleware, taskRouter) // -----> Auth get called so that if the user is not loggeeon they cannot access the tasks.
+const jwtMiddleware = require("./middleware/jwtMiddleware");
+const prisma = require("./db/prisma");
+const analyticsRoutes = require('./routes/analyticsRoutes')
+const cookieParser = require("cookie-parser");
+app.use(cookieParser())
+app.set("trust proxy", 1);
+const helmet = require("helmet");
+const { xss } = require("express-xss-sanitizer");
+const rateLimiter = require("express-rate-limit");
 
-
-
-global.user_id = null;
-global.users = []; //-------> Array of objects of users
-global.tasks = []; //-------> using this in my taskController.js
+const taskRouter = require("./routes/taskRoutes");
+app.use("/api/tasks", jwtMiddleware, taskRouter); // -----> jwtMiddleware protects the routes
+app.use(helmet())
+app.use(xss())
 
 const middleFunction = (req, res, next) => {
   console.log(
@@ -20,23 +25,25 @@ const middleFunction = (req, res, next) => {
 };
 
 app.use(middleFunction);
+app.use('/api/analytics', jwtMiddleware, analyticsRoutes)
 
-app.use(express.json({ limit: "1kb" })); //parsing the body of the request json
+app.use(
+  rateLimiter({
+    windowMs: 15 * 60 * 1000,//15 minutes
+    max: 100, //limit each IP to 100 requests per window MS
+  })
+)
 
 app.get("/", (req, res) => {
   res.json({ message: "hello" });
 });
 
-const port = process.env.PORT || 3000;
-const server = app.listen(port, () =>
-  console.log(`Server is listening on port ${port}...`)
-);
+
 
 const userRouter = require("./routes/userRoutes.js");
 app.use("/api/users", userRouter);
 
-app.use("/api/users/logon", userRouter);
-app.use("/api/users/logoff", userRouter);
+
 
 const notFound = require("./middleware/not-found");
 app.use(notFound);
@@ -45,13 +52,20 @@ const errorHandler = require("./middleware/error-handler");
 
 app.use(errorHandler);
 
-//health check added here 
+const port = process.env.PORT || 3000;
+const server = app.listen(port, () =>
+  console.log(`Server is listening on port ${port}...`)
+);
+
+//health check added here
 app.get("/health", async (req, res) => {
   try {
-    await pool.query("SELECT 1");
+    await prisma.$queryRaw`SELECT 1`;
     res.json({ status: "ok", db: "connected" });
   } catch (err) {
-    res.status(500).json({ message: `db not connected, error: ${ err.message }` });
+    res
+      .status(500)
+      .json({ status: "error", db: "not connected", error: err.message });
   }
 });
 
@@ -70,11 +84,14 @@ async function shutdown(code = 0) {
   if (isShuttingDown) return;
   isShuttingDown = true;
   console.log("Shutting down gracefully...");
+  
+
   try {
     await new Promise((resolve) => server.close(resolve));
     console.log("HTTP server closed.");
     // If you have DB connections, close them here
-    await pool.end();
+    await prisma.$disconnect(); // shuts down prisma
+    console.log("Prisma disconnected");
   } catch (err) {
     console.error("Error during shutdown:", err);
     code = 1;
@@ -102,5 +119,3 @@ app.post("./testpost", (req, res) => {
 //
 
 module.exports = { app, server };
-
-

@@ -108,7 +108,7 @@ sudo service posgresql start
 sudo -su postgres psql
 CREATE DATABASE nodehomework OWNER <username>;
 CREATE DATABASE tasklist OWNER <username>;
-CREATE DATABASE tasklisttest OWNER <username>;
+CREATE DATABASE testtasklist OWNER <username>;
 CREATE ROLE <username> LOGIN CREATEDB;
 \q
 ```
@@ -204,7 +204,7 @@ Last thing, you need to create a _**.env**_ file in the root of the `node-homewo
 ```
 DB_URL=postgresql://<username>@localhost/nodehomework?host=/tmp
 DATABASE_URL=postgresql://<username>@localhost/tasklist?host=/tmp
-TEST_DATABASE_URL=postgresql://<username>@localhost/tasklist?host=/tmp
+TEST_DATABASE_URL=postgresql://<username>@localhost/testtasklist?host=/tmp
 ```
 
 </details>
@@ -228,7 +228,7 @@ TEST_DATABASE_URL=postgresql://mypguser:<pg-password>@localhost/testtasklist
 ```
 DB_URL=postgresql://<username>@localhost/nodehomework?host=/var/run/postgresql
 DATABASE_URL=postgresql://<username>@localhost/tasklist?host=/var/run/postgresql
-TEST_DATABASE_URL=postgresql://<username>@localhost/tasklist?host=/var/run/postgresql
+TEST_DATABASE_URL=postgresql://<username>@localhost/testtasklist?host=/var/run/postgresql
 ```
 
 </details>
@@ -295,6 +295,30 @@ git checkout -b assignment2
 - Usual Express files (e.g., `app.js`, `routes/`, `controllers/`, `utils/`, `models/`, `tests/`, etc.) will be present in the root or as needed for the Node/Express app.
 - `package.json`: Single package file for the whole project.
 - The repository is structured for cloud deployment.
+
+
+// routes/taskRoutes.js
+const express = require("express");
+const router = express.Router();
+const {
+  bulkCreate,
+  index,
+  show,
+  create,
+  update,
+  deleteTask
+  
+} = require("../controllers/taskController");
+
+router.post("/:id", bulkCreate)
+router.get("/", index);
+router.get("/:id", show);
+router.post("/", create);
+router.patch("/:id", update);
+router.delete("/:id", deleteTask);
+
+
+module.exports = router;
 
 ## Good Luck With the Class, and Happy Coding!
 

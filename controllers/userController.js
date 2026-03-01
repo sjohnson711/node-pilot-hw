@@ -1,9 +1,12 @@
+require("dotenv").config();
 const { StatusCodes } = require("http-status-codes");
 const crypto = require("crypto");
 const util = require("util");
+const prisma = require("../db/prisma");
 const scrypt = util.promisify(crypto.scrypt);
-const pool = require("../db/pg-pool");
 const { userSchema } = require("../validation/userSchema");
+const { randomUUID } = require("crypto");
+const jwt = require("jsonwebtoken");
 
 async function hashPassword(password) {
   const salt = crypto.randomBytes(16).toString("hex");
@@ -18,11 +21,46 @@ async function comparePassword(inputPassword, storedHash) {
   return crypto.timingSafeEqual(keyBuffer, derivedKey);
 }
 
-//REGISTER
+// REGISTER
 const register = async (req, res, next) => {
   if (!req.body) req.body = {};
 
-  const { value, error } = userSchema.validate(req.body, { abortEarly: false }); //validates the userSchema
+  //checking for the recaptcha
+  let isPerson = false;
+  if (req.body.recaptchaToken) {
+    const token = req.body.recaptchaToken;
+    const params = new URLSearchParams();
+    params.append("secret", process.env.RECAPTCHA_SECRET);
+    params.append("response", token);
+    params.append("remoteip", req.ip);
+    const response = await fetch(
+      // might throw an error that would cause a 500 from the error handler
+      "https://www.google.com/recaptcha/api/siteverify",
+      {
+        method: "POST",
+        body: params.toString(),
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+      }
+    );
+    const data = await response.json();
+    if (data.success) isPerson = true;
+    delete req.body.recaptchaToken;
+  } else if (
+    process.env.RECAPTCHA_BYPASS &&
+    req.get("X-Recaptcha-Test") === process.env.RECAPTCHA_BYPASS
+  ) {
+    // might be a test environment
+    isPerson = true;
+  }
+  if (!isPerson) {
+    return res
+      .status(StatusCodes.BAD_REQUEST)
+      .json({ message: "We can't tell if you're a person or a bot." });
+  }
+
+  const { value, error } = userSchema.validate(req.body, { abortEarly: false });
 
   if (error) {
     return res
@@ -30,32 +68,86 @@ const register = async (req, res, next) => {
       .json({ message: error.details[0].message });
   }
 
-  const { name, email, password } = value;
+  //create the JWT and sit it in a cookie and return the result to the caller
+  const cookieFlags = (req) => {
+    return {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production", //only when HTTPS is available
+      sameSite: "Strict",
+    };
+  };
 
+  const setJwtCookie = (req, res, user) => {
+    //sign JWT
+    const payload = { id: user.id, csrfToken: randomUUID() };
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    }); //1 hour expiration
+    // set cookie. Note that the cookie flags have to be different in production and in test
+    res.cookie("jwt", token, { ...cookieFlags(req), maxAge: 3600000 }); //1hr experation
+    return payload.csrfToken; //thhis is needed in the body returned by logon() and register()
+  };
+
+  const { name, email, password } = value;
   const hashedPassword = await hashPassword(password);
+  delete value.password;
 
   try {
-    const result = await pool.query(
-      `INSERT INTO users (name, email, hashed_password)
-      VALUES($1, $2, $3)
-      RETURNING id, name, email`,
-      [name, email, hashedPassword]
-    );
+    const result = await prisma.$transaction(async (tx) => {
+      //create user account
 
-    global.user_id = result.rows[0].id; // After the registration step, the user is set to logged on.
+      const newUser = await tx.user.create({
+        data: { name, email, hashedPassword },
+        select: { id: true, email: true, name: true },
+      });
+      //create 3 welcome tasks using createMany
+      const welcomeTaskData = [
+        {
+          title: "Complete your profile",
+          userId: newUser.id,
+          priority: "medium",
+        },
+        { title: "Add your first task", userId: newUser.id, priority: "high" },
+        { title: "Explore the app", userId: newUser.id, priority: "low" },
+      ];
+      await tx.task.createMany({ data: welcomeTaskData });
 
-    return res.status(StatusCodes.CREATED).json(result.rows[0]);
-  } catch (e) {
-    if (e.code === "23505") {
-      return res
-        .status(StatusCodes.BAD_REQUEST)
-        .json({ message: "User already exists " });
+      //Fetch the created tasks to return them
+      const welcomeTasks = await tx.task.findMany({
+        where: {
+          userId: newUser.id,
+          title: { in: welcomeTaskData.map((t) => t.title) },
+        },
+        select: {
+          id: true,
+          title: true,
+          isCompleted: true,
+          userId: true,
+          priority: true,
+        },
+      });
+      const csrfToken = setJwtCookie(req, res, newUser);
+      return { user: newUser, welcomeTasks, csrfToken };
+    });
+
+    res.status(201);
+    res.json({
+      user: result.user,
+      welcomeTasks: result.welcomeTasks,
+      transactionStatus: "success",
+      csrfToken: result.csrfToken,
+    });
+    return;
+  } catch (err) {
+    if (err.code === "P2002") {
+      return res.status(400).json({ message: "Email already registered" });
+    } else {
+      return next(err);
     }
-    return next(e);
   }
 };
 
-//LOGON
+// LOGON
 const logon = async (req, res) => {
   if (!req.body || !req.body.email || !req.body.password) {
     return res
@@ -63,21 +155,18 @@ const logon = async (req, res) => {
       .json({ message: "Email and password are required" });
   }
 
-  const { email, password } = req.body;
+  let { email, password } = req.body;
+  email = email.toLowerCase();
 
-  const result = await pool.query("SELECT * FROM users WHERE email = $1", [
-    email,
-  ]);
+  const user = await prisma.user.findUnique({ where: { email } });
 
-  if (result.rows.length === 0) {
+  if (!user) {
     return res
       .status(StatusCodes.UNAUTHORIZED)
       .json({ message: "Authentication Failed" });
   }
 
-  const user = result.rows[0];
-
-  const isPasswordValid = await comparePassword(password, user.hashed_password);
+  const isPasswordValid = await comparePassword(password, user.hashedPassword);
 
   if (!isPasswordValid) {
     return res
@@ -85,19 +174,38 @@ const logon = async (req, res) => {
       .json({ message: "Authentication Failed" });
   }
 
-  global.user_id = user.id;
+  //create the JWT and sit it in a cookie and return the result to the caller
 
+  const setJwtCookie = (req, res, user) => {
+    //sign JWT
+    const payload = { id: user.id, csrfToken: randomUUID() };
+    const token = jwt.sign(payload, process.env.JWT_SECRET, {
+      expiresIn: "1h",
+    }); //1 hour expiration
+    // set cookie. Note that the cookie flags have to be different in production and in test
+    res.cookie("jwt", token, { ...cookieFlags(req), maxAge: 3600000 }); //1hr experation
+    return payload.csrfToken; //thhis is needed in the body returned by logon() and register()
+  };
+  const csrfToken = setJwtCookie(req, res, user);
   return res.status(StatusCodes.OK).json({
     name: user.name,
     email: user.email,
+    csrfToken: csrfToken,
   });
 };
-///////////LOGOFF///////////////////////
+const cookieFlags = (req) => {
+  return {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production", //only when HTTPS is available
+    sameSite: "Strict",
+  };
+};
+
+// LOGOFF
 const logoff = (req, res) => {
-  global.user_id = null;
+  res.clearCookie("jwt", cookieFlags(req));
+
   return res.status(200).json({ message: "logged off" });
 };
 
 module.exports = { register, logon, logoff };
-
-//The module is user for logon, logoff and other controllables
